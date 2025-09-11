@@ -43,6 +43,9 @@ body{
   font-weight:bold;
   text-align:right;
 }
+/* --- Charts (fallback) --- */
+img.img-fluid { max-width: 100%; height: auto; display: block; }
+#charts-card img { background: rgba(255,255,255,0.03); }
 </style>
 </head>
 <body>
@@ -50,6 +53,22 @@ body{
     <h1 class="h4 text-center mb-2">DigiShowModbus Web Monitor</h1>
     <!-- All dynamically generated groups live here -->
     <div id="groups"></div>
+    <!-- Charts (Server-side rendered images) -->
+    <div class="card mb-2 text-light" id="charts-card" aria-labelledby="charts-title">
+      <div class="card-header py-1" id="charts-title">Charts</div>
+      <div class="card-body p-2">
+        <div class="row g-2">
+          <div class="col-12 col-md-6">
+            <img id="chart-a" class="img-fluid rounded border"
+                src="/v1/img/chart_a" alt="Chart A" loading="lazy">
+          </div>
+          <div class="col-12 col-md-6">
+            <img id="chart-b" class="img-fluid rounded border"
+                src="/v1/img/chart_b" alt="Chart B" loading="lazy">
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
 <script>
@@ -153,6 +172,50 @@ function updateValues (data) {
 }
 
 // ──────────────────────────────────────────────────────────────
+// Charts: image refresh helpers
+// ──────────────────────────────────────────────────────────────
+
+// キャッシュを避けるためにクエリでタイムスタンプを付与
+function refreshCharts() {
+  const a = document.getElementById('chart-a');
+  const b = document.getElementById('chart-b');
+  if (!a || !b) return; // カードを置いていないページでも安全に
+
+  const ts = Date.now();
+  a.src = `/v1/img/chart_a?ts=${ts}`;
+  b.src = `/v1/img/chart_b?ts=${ts}`;
+}
+
+// 失敗時は見た目を落として分かるように（成功したら戻す）
+function bindImgLoadHandlers(id, label) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('error', () => {
+    el.classList.add('opacity-50');
+    el.alt = `${label} (load failed)`;
+  });
+  el.addEventListener('load', () => {
+    el.classList.remove('opacity-50');
+  });
+}
+bindImgLoadHandlers('chart-a', 'Chart A');
+bindImgLoadHandlers('chart-b', 'Chart B');
+
+// 画像は全サイクルで更新すると重いので、n回に1度だけ更新
+let chartTick = 0;
+const CHART_REFRESH_EVERY = 5; // 5サイクル ≒ 約5–6秒ごとに更新（負荷と鮮度のバランス）
+
+// 既存の poll() の最後（finally節）や成功処理の末尾に以下を追加
+// 例：poll() の try{...}finally{ setTimeout(poll, 200); } の try 部分の末尾など
+// 「成功時にだけ更新したい」なら success ルートで ++chartTick する形でもOK
+function maybeRefreshCharts() {
+  chartTick++;
+  if (chartTick % CHART_REFRESH_EVERY === 0) {
+    refreshCharts();
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 //  Polling loop
 // ──────────────────────────────────────────────────────────────
 async function poll () {
@@ -174,6 +237,9 @@ async function poll () {
   } catch (err) {
     console.error("Fetch error:", err);
   } finally {
+    // ← ここで画像更新の判定を呼ぶ
+    maybeRefreshCharts();
+
     // queue the next attempt *after* this one completes, avoiding request piling
     setTimeout(poll, 200);   // 600 ms gap keeps total cycle time ≥ ~1.1 s
   }
