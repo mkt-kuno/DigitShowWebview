@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DigitShowModbus Web Monitor</title>
+  <!-- Bootstrap (optional) -->
+  <link href="./bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+<style>
+/* =======   Fallback styles (also used when Bootstrap present)  ======= */
+:root{
+  /* default background (overridden by JSON system.color) */
+  --bg-color:#002020;
+}
+body{
+  background-color:var(--bg-color);
+  color:#ffffff;
+  font-family:Arial,Helvetica,sans-serif;
+}
+.card{
+  background-color: rgb(0, 0, 0, 0.0);
+  border:1px solid rgb(255, 255, 255, 0.4);
+  border-radius:0.5rem;
+}
+.card-header{
+  font-weight:bold;
+}
+.data-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:4px;
+}
+.data-item{
+  border:1px solid rgb(255, 255, 255, 0.4);
+  border-radius:4px;
+  padding:4px;
+}
+.data-item-label{
+  font-size:0.75rem;
+}
+.data-item-value{
+  font-size:1.2rem;
+  font-weight:bold;
+  text-align:right;
+}
+</style>
+</head>
+<body>
+  <div class="container-fluid py-2">
+    <h1 class="h4 text-center mb-2">DigiShowModbus Web Monitor</h1>
+    <!-- All dynamically generated groups live here -->
+    <div id="groups"></div>
+  </div>
+
+<script>
+/**
+ * DigiShowModbus simple polling front-end
+ * – fetches JSON from http://localhost/v1/ every cycle
+ * – waits for the previous request to complete successfully before firing the next
+ * – generous timeout (4 s) in case of the 500 ms network/processing latency
+ */
+
+const ENDPOINT = "/v1/";
+const TIMEOUT_MS = 4000;   // must be > 500 ms round-trip
+let initialised = false;
+
+// ──────────────────────────────────────────────────────────────
+//  Helpers
+// ──────────────────────────────────────────────────────────────
+function fetchWithTimeout (url, timeout = TIMEOUT_MS) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, { signal: controller.signal })
+          .finally(() => clearTimeout(id));
+}
+
+/**
+ * Apply background color from data.system.color or fallback
+ */
+function applySystemColor (data) {
+  const color = data?.system?.color || '#002020';
+  document.documentElement.style.setProperty('--bg-color', color);
+}
+
+/**
+ * Value formatting rules
+ *  - "raw"  : integer (no decimals)
+ *  - others : fixed 5‑decimal float
+ */
+function formatValue (key, v) {
+  if (typeof v !== "number") return v;
+  return key === "raw" ? v.toFixed(0) : v.toFixed(5);
+}
+
+// ──────────────────────────────────────────────────────────────
+//  UI builders
+// ──────────────────────────────────────────────────────────────
+function createGroup (title, key, entries) {
+  const card   = document.createElement("div");
+  card.className = "card mb-2 text-light";
+
+  const header = document.createElement("div");
+  header.className = "card-header py-1";
+  header.textContent = title;
+
+  const body   = document.createElement("div");
+  body.className = "card-body p-2";
+
+  const grid   = document.createElement("div");
+  grid.className = "data-grid";
+
+  entries.forEach(([id, label, value]) => {
+    const item = document.createElement("div");
+    item.className = "data-item";
+    item.innerHTML = `<div class=\"data-item-label\">${label}</div><div id=\"${key}-${id}\" class=\"data-item-value\">${formatValue(key,value)}</div>`;
+    grid.appendChild(item);
+  });
+
+  body.appendChild(grid);
+  card.appendChild(header);
+  card.appendChild(body);
+  return card;
+}
+
+function buildUI (data) {
+  const container = document.getElementById("groups");
+  container.innerHTML = "";
+
+  const categories = [
+    { key: "raw",    title: "Raw Value (int16_t −32768 to +32767)" },
+    { key: "phy",    title: "Physical Value" },
+    { key: "param",  title: "Parameter" },
+    { key: "output", title: "Voltage Output" }
+  ];
+
+  categories.forEach(cat => {
+    if (!data[cat.key]) return;
+    const entries = Object.entries(data[cat.key])
+          .sort(([a],[b]) => Number(a) - Number(b))        // numeric sort ensures 00 first
+          .map(([id, obj]) => [id.padStart(2, "0"), obj.label || id, obj.value]);
+    container.appendChild(createGroup(cat.title, cat.key, entries));
+  });
+}
+
+function updateValues (data) {
+  ["raw", "phy", "param", "output"].forEach(key => {
+    if (!data[key]) return;
+    Object.entries(data[key]).forEach(([id, obj]) => {
+      const el = document.getElementById(`${key}-${id.padStart(2, "0")}`);
+      if (el) el.textContent = formatValue(key, obj.value);
+    });
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Polling loop
+// ──────────────────────────────────────────────────────────────
+async function poll () {
+  try {
+    const res = await fetchWithTimeout(ENDPOINT);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+
+    // system color update
+    applySystemColor(data);
+
+    if (!initialised) {
+      buildUI(data);
+      initialised = true;
+    } else {
+      updateValues(data);
+    }
+  } catch (err) {
+    console.error("Fetch error:", err);
+  } finally {
+    // queue the next attempt *after* this one completes, avoiding request piling
+    setTimeout(poll, 200);   // 600 ms gap keeps total cycle time ≥ ~1.1 s
+  }
+}
+
+// kick-off
+poll();
+</script>
+</body>
+</html>
