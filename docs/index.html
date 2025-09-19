@@ -257,7 +257,6 @@ function fetchWithTimeout (url, timeout = TIMEOUT_MS) {
     signal: controller.signal,
     mode: 'cors',
     credentials: 'omit',
-    referrerPolicy: 'strict-origin-when-cross-origin',
     headers: {
       'Accept': 'application/json',
     }
