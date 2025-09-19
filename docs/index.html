@@ -169,20 +169,20 @@ function updateRecentIPsUI() {
 //  Connection Management
 // ──────────────────────────────────────────────────────────────
 function getEndpointURL() {
-  const protocol = window.location.protocol;
   if (currentIP === 'localhost' || currentIP === '127.0.0.1') {
     return '/v1/';
   }
-  return `${protocol}//${currentIP}/v1/`;
+  // Force HTTP for external devices (they don't support HTTPS)
+  return `http://${currentIP}/v1/`;
 }
 
 function getChartURL(chartName) {
-  const protocol = window.location.protocol;
   const ts = Date.now();
   if (currentIP === 'localhost' || currentIP === '127.0.0.1') {
     return `/v1/img/${chartName}?ts=${ts}`;
   }
-  return `${protocol}//${currentIP}/v1/img/${chartName}?ts=${ts}`;
+  // Force HTTP for external devices (they don't support HTTPS)
+  return `http://${currentIP}/v1/img/${chartName}?ts=${ts}`;
 }
 
 function connectToIP() {
