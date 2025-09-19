@@ -250,8 +250,32 @@ function initializeApp() {
 function fetchWithTimeout (url, timeout = TIMEOUT_MS) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
-  return fetch(url, { signal: controller.signal })
-          .finally(() => clearTimeout(id));
+  
+  // Configure fetch options to handle CORS and mixed content issues
+  const fetchOptions = {
+    signal: controller.signal,
+    mode: 'cors',
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    headers: {
+      'Accept': 'application/json',
+    }
+  };
+  
+  return fetch(url, fetchOptions)
+    .catch(error => {
+      // If CORS fails, try with no-cors mode as fallback
+      if (error.name === 'TypeError' && error.message.includes('CORS')) {
+        console.warn('CORS failed, trying no-cors mode for:', url);
+        const fallbackOptions = {
+          ...fetchOptions,
+          mode: 'no-cors'
+        };
+        return fetch(url, fallbackOptions);
+      }
+      throw error;
+    })
+    .finally(() => clearTimeout(id));
 }
 
 /**
