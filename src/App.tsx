@@ -209,15 +209,27 @@ const ChartPreviewArea = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     chartsRef.current[id] = new Chart(ctx, {
-      type: 'line',
+      type: 'scatter',
       // cast datasets to any to avoid strict Chart.js dataset typing issues in TS
-      data: { labels: [], datasets: ([{ label: id, data: [], pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any },
+      data: { labels: [], datasets: ([{ label: id, data: [], showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any },
       options: {
         animation: false,
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: true } },
-        elements: { point: { radius: 0 } }
+        elements: { point: { radius: 0 } },
+        // scales: {
+        //   x: {
+        //     ticks: {
+        //       autoSkip: true,
+        //     },
+        //   },
+        //   y: {
+        //     ticks: {
+        //       autoSkip: true,
+        //     }
+        //   }
+        // }
       }
     });
   };
@@ -272,29 +284,25 @@ const ChartPreviewArea = () => {
           const xArr = lists[card.x];
           const yArr = lists[card.y];
 
-          const yvals = Array.isArray(yArr) ? yArr.map((v: any) => Number(v)) : [];
-
-          // Simplified: always use category-style arrays (labels + y array), no parsing or scale changes
-          let usedLen = 0;
-          let usedLabels: string[] = [];
-          if (Array.isArray(xArr)) {
-            const xlabels = xArr.map((v: any) => String(v));
-            usedLen = Math.min(xlabels.length, yvals.length);
-            usedLabels = xlabels.slice(0, usedLen);
-          } else {
-            usedLen = yvals.length;
-            usedLabels = Array.from({ length: usedLen }, (_, i) => String(i));
+          const dataPoints: { x: number; y: number | null }[] = [];
+          if (Array.isArray(xArr) && Array.isArray(yArr)) {
+            const len = Math.min(xArr.length, yArr.length);
+            for (let i = 0; i < len; i++) {
+              const xVal = Number(xArr[i]);
+              const yValRaw = yArr[i];
+              const yVal = (yValRaw === null || yValRaw === undefined || (typeof yValRaw === 'number' && !Number.isFinite(yValRaw))) ? null : Number(yValRaw);
+              dataPoints.push({ x: xVal, y: yVal });
+            }
           }
-          const usedY = yvals.slice(0, usedLen);
-
-          ch.data.labels = usedLabels;
-          if (!ch.data.datasets || ch.data.datasets.length === 0) ch.data.datasets = ([{ label: labelMap[card.y] || card.y, data: usedY, pointRadius: 0, borderWidth: 2, tension: 0.2, borderColor: '#1976d2' }]) as any;
-          else {
+          if (!ch.data.datasets || ch.data.datasets.length === 0) {
+            ch.data.datasets = ([{ label: labelMap[card.y] || card.y, data: dataPoints, showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any;
+          } else {
             (ch.data.datasets[0] as any).label = labelMap[card.y] || card.y;
-            (ch.data.datasets[0] as any).data = usedY;
+            (ch.data.datasets[0] as any).data = dataPoints;
             (ch.data.datasets[0] as any).pointRadius = 0;
             (ch.data.datasets[0] as any).borderWidth = 2;
             (ch.data.datasets[0] as any).tension = 0.2;
+            (ch.data.datasets[0] as any).spanGaps = true;
             (ch.data.datasets[0] as any).borderColor = '#1976d2';
           }
 
