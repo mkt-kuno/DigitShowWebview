@@ -22,15 +22,62 @@ const fetchWithTimeout = async (url: string, timeout = TIMEOUT_MS) => {
   }
 };
 
-const formatValue = (key: string, v: any) => {
-  if (typeof v !== "number") return v;
-  return key === "raw" ? v.toFixed(0) : v.toFixed(5);
+// Simple storage with cookie fallback (for environments where localStorage is blocked)
+const setCookie = (name: string, value: string, days = 365) => {
+  try {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+  } catch {}
+};
+
+const getCookie = (name: string): string | null => {
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+};
+
+const storage = {
+  get(key: string): string | null {
+    try {
+      const v = window.localStorage.getItem(key);
+      if (v !== null) return v;
+    } catch {}
+    return getCookie(key);
+  },
+  set(key: string, value: string) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {}
+    setCookie(key, value);
+  }
+};
+
+type DisplayValue = { text: string; invalid?: boolean };
+
+const formatValue = (key: string, v: any): DisplayValue => {
+  const needsGuard = key === 'phy' || key === 'param';
+
+  // Invalid handling for phy/param
+  if (needsGuard) {
+    if (v == null) return { text: 'null', invalid: true };
+    if (typeof v !== 'number') return { text: String(v), invalid: true };
+    if (!Number.isFinite(v)) {
+      if (Number.isNaN(v)) return { text: 'NaN', invalid: true };
+      return { text: v > 0 ? '∞' : '-∞', invalid: true };
+    }
+  }
+
+  if (typeof v !== 'number') return { text: String(v) };
+  return { text: key === 'raw' ? v.toFixed(0) : v.toFixed(5) };
 };
 // Previously declared helper structures (range, PARAMS, ALL_PARAMS) were unused and removed for cleanliness.
 
 interface DataItemProps {
   label: string;
-  value: string;
+  value: DisplayValue;
 }
 
 interface DataGroupProps {
@@ -48,12 +95,19 @@ const DataItem = ({ label, value }: DataItemProps) => (
     minWidth: '130px'
   }}>
     <div style={{ fontSize: '0.75rem', opacity: 0.75 }}>{label}</div>
-    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', textAlign: 'right' }}>{value}</div>
+    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', textAlign: 'right', color: value.invalid ? '#ff0000' : undefined }}>
+      {value.text}
+    </div>
   </div>
 );
 
 // DataGroup Component
 const DataGroup = ({ title, data, categoryKey }: DataGroupProps) => {
+  const storageKey = `dg-open-${categoryKey}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    const v = storage.get(storageKey);
+    return v === null ? true : v === '1';
+  });
   const entries = Object.entries(data)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([id, obj]) => ({
@@ -68,24 +122,54 @@ const DataGroup = ({ title, data, categoryKey }: DataGroupProps) => {
       borderRadius: '0.5rem',
       marginBottom: '0.5rem'
     }}>
-      <div style={{
-        fontWeight: 'bold',
-        padding: '0.25rem 0.75rem',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.4)'
-      }}>
-        {title}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontWeight: 'bold',
+          padding: '0.25rem 0.75rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.4)'
+        }}
+      >
+        <span>{title}</span>
+        <button
+          type="button"
+          aria-label={open ? '折りたたむ' : '展開'}
+          onClick={() => {
+            setOpen(o => {
+              const next = !o;
+              storage.set(storageKey, next ? '1' : '0');
+              return next;
+            });
+          }}
+          style={{
+            background: 'transparent',
+            color: 'inherit',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
+            borderRadius: '4px',
+            fontSize: '0.9rem',
+            padding: '0 0.5rem',
+            lineHeight: '1.5rem',
+            cursor: 'pointer'
+          }}
+        >
+          {open ? '△' : '▽'}
+        </button>
       </div>
-      <div style={{ padding: '0.5rem' }}>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-          gap: '4px'
-        }}>
-          {entries.map(({ id, label, value }) => (
-            <DataItem key={id} label={label} value={value} />
-          ))}
+      {open && (
+        <div style={{ padding: '0.5rem' }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+            gap: '4px'
+          }}>
+            {entries.map(({ id, label, value }) => (
+              <DataItem key={id} label={label} value={value} />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
