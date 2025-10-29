@@ -215,6 +215,7 @@ const ChartPreviewArea = () => {
       options: {
         animation: false,
         responsive: true,
+        maintainAspectRatio: false,
         plugins: { legend: { display: true } },
         elements: { point: { radius: 0 } }
       }
@@ -315,29 +316,43 @@ const ChartPreviewArea = () => {
   }, [cards]);
 
   return (
-    <div style={{ border: '1px solid rgba(255,255,255,0.4)', borderRadius: '0.5rem', marginBottom: '0.5rem' }}>
-      <div style={{ fontWeight: 'bold', padding: '0.25rem 0.75rem', borderBottom: '1px solid rgba(255,255,255,0.4)' }}>
+    <div className="border border-white/40 rounded-lg mb-2">
+      <div className="font-bold px-3 py-1 border-b border-white/40 relative">
         Chart Previews
-        <button onClick={addCard} style={{ float: 'right', background: 'transparent', color: 'inherit', border: 'none', cursor: 'pointer' }}>＋</button>
+        <button
+          onClick={addCard}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-inherit bg-transparent border-0 cursor-pointer"
+          aria-label="Add chart card"
+        >
+          ＋
+        </button>
       </div>
-      <div style={{ padding: '0.5rem', display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="p-2 grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {cards.map(card => (
-          <div key={card.id} style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.25rem', padding: '0.5rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>X:
-                <select value={card.x} onChange={e => setCards(cs => cs.map(c => c.id === card.id ? { ...c, x: e.target.value } : c))} style={{ color: '#000', background: '#fff' }}>
+          <div key={card.id} className="border border-white/10 rounded p-2">
+            <div className="flex items-center gap-2 mb-2">
+              <label className="flex items-center gap-2">X:
+                <select
+                  value={card.x}
+                  onChange={e => setCards(cs => cs.map(c => c.id === card.id ? { ...c, x: e.target.value } : c))}
+                  className="text-black bg-white rounded px-2 py-1"
+                >
                   {fields.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>Y:
-                <select value={card.y} onChange={e => setCards(cs => cs.map(c => c.id === card.id ? { ...c, y: e.target.value } : c))} style={{ color: '#000', background: '#fff' }}>
+              <label className="flex items-center gap-2">Y:
+                <select
+                  value={card.y}
+                  onChange={e => setCards(cs => cs.map(c => c.id === card.id ? { ...c, y: e.target.value } : c))}
+                  className="text-black bg-white rounded px-2 py-1"
+                >
                   {fields.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </label>
-              <button onClick={() => removeCard(card.id)} style={{ marginLeft: 'auto' }}>✕</button>
+              <button onClick={() => removeCard(card.id)} className="ml-auto">✕</button>
             </div>
-            <div style={{ background: '#ffffff', padding: '0.25rem', borderRadius: '4px' }}>
-              <canvas ref={el => ensureChart(card.id, el as HTMLCanvasElement | null)} style={{ width: '100%', background: '#ffffff' }} />
+            <div className="bg-white p-1 rounded aspect-video">
+              <canvas ref={el => ensureChart(card.id, el as HTMLCanvasElement | null)} className="w-full h-full bg-white" />
             </div>
           </div>
         ))}
