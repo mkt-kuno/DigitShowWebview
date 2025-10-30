@@ -174,6 +174,190 @@ const DataGroup = ({ title, data, categoryKey }: DataGroupProps) => {
   );
 };
 
+// ChartPreviewArea: multiple card-based charts using Chart.js
+const ChartPreviewArea = () => {
+  // fields available for X/Y selection
+  const fields = [
+    'time',
+    ...Array.from({ length: 16 }, (_, i) => `phy_${String(i).padStart(2, '0')}`),
+    ...Array.from({ length: 16 }, (_, i) => `raw_${String(i).padStart(2, '0')}`),
+    ...Array.from({ length: 32 }, (_, i) => `param_${String(i).padStart(2, '0')}`),
+  ];
+
+  type Card = { id: string; x: string; y: string };
+  const [cards, setCards] = useState<Card[]>([{ id: 'c0', x: 'time', y: 'phy_00' }]);
+  const chartsRef = useRef<Record<string, Chart | null>>({});
+
+  // helper to add a card
+  const addCard = () => {
+    setCards(prev => [...prev, { id: `c${Date.now()}`, x: 'time', y: 'phy_00' }]);
+  };
+  const removeCard = (id: string) => {
+    setCards(prev => prev.filter(c => c.id !== id));
+    // destroy chart if exists
+    const ch = chartsRef.current[id];
+    if (ch) {
+      ch.destroy();
+      delete chartsRef.current[id];
+    }
+  };
+
+  // create or update a Chart.js instance for a card canvas
+  const ensureChart = (id: string, canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return;
+    if (chartsRef.current[id]) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    chartsRef.current[id] = new Chart(ctx, {
+      type: 'scatter',
+      // cast datasets to any to avoid strict Chart.js dataset typing issues in TS
+      data: { labels: [], datasets: ([{ label: id, data: [], showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any },
+      options: {
+        animation: false,
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true } },
+        elements: { point: { radius: 0 } },
+      }
+    });
+  };
+
+  // Batch fetch and update charts
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchAndUpdate = async () => {
+      if (cards.length === 0) return;
+      // gather unique fields needed across cards
+      const needed = new Set<string>();
+      cards.forEach(c => { needed.add(c.x); needed.add(c.y); });
+      const params = Array.from(needed).join('&');
+      const url = params ? `/v1/preview?${params}` : `/v1/preview`;
+
+      try {
+        const res = await fetchWithTimeout(url);
+        if (!isMounted || !res.ok) return;
+        const json = await res.json();
+
+        // Support two response shapes:
+        // 1) legacy: { label?: string[] | {field:label}, list: { [field]: number[] } }
+        // 2) new/sample: { fieldName: { label: string, list: number[] }, ... }
+
+        const lists: Record<string, any[]> = {};
+        const labelMap: Record<string, string> = {};
+
+        if (json && typeof json === 'object') {
+          if (json.list) {
+            // legacy shape
+            Object.assign(lists, json.list);
+            if (json.label && typeof json.label === 'object' && !Array.isArray(json.label)) {
+              Object.entries(json.label).forEach(([k, v]) => { labelMap[k] = String(v); });
+            }
+          } else {
+            // new/sample shape: top-level keys are fields
+            Object.entries(json).forEach(([k, v]) => {
+              if (v && typeof v === 'object') {
+                if (Array.isArray((v as any).list)) lists[k] = (v as any).list;
+                if ((v as any).label !== undefined) labelMap[k] = String((v as any).label);
+              }
+            });
+          }
+        }
+
+        // Update each card's chart
+        cards.forEach(card => {
+          const ch = chartsRef.current[card.id];
+          if (!ch) return;
+
+          const xArr = lists[card.x];
+          const yArr = lists[card.y];
+
+          const dataPoints: { x: number; y: number | null }[] = [];
+          if (Array.isArray(xArr) && Array.isArray(yArr)) {
+            const len = Math.min(xArr.length, yArr.length);
+            for (let i = 0; i < len; i++) {
+              const xVal = Number(xArr[i]);
+              const yValRaw = yArr[i];
+              const yVal = (yValRaw === null || yValRaw === undefined || (typeof yValRaw === 'number' && !Number.isFinite(yValRaw))) ? null : Number(yValRaw);
+              dataPoints.push({ x: xVal, y: yVal });
+            }
+          }
+          if (!ch.data.datasets || ch.data.datasets.length === 0) {
+            ch.data.datasets = ([{ label: labelMap[card.y] || card.y, data: dataPoints, showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any;
+          } else {
+            (ch.data.datasets[0] as any).label = labelMap[card.y] || card.y;
+            (ch.data.datasets[0] as any).data = dataPoints;
+            (ch.data.datasets[0] as any).pointRadius = 0;
+            (ch.data.datasets[0] as any).borderWidth = 2;
+            (ch.data.datasets[0] as any).tension = 0.2;
+            (ch.data.datasets[0] as any).spanGaps = true;
+            (ch.data.datasets[0] as any).borderColor = '#1976d2';
+          }
+
+          ch.update();
+        });
+      } catch (err) {
+        // silent
+        console.error('preview fetch error', err);
+      }
+    };
+
+    // run immediately, then interval
+    fetchAndUpdate();
+    const id = setInterval(fetchAndUpdate, CHART_INTERVAL);
+    return () => {
+      isMounted = false;
+      clearInterval(id);
+    };
+  }, [cards]);
+
+  return (
+    <div className="border border-white/40 rounded-lg mb-2">
+      <div className="font-bold px-3 py-1 border-b border-white/40 relative">
+        Chart Previews
+        <button
+          onClick={addCard}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-inherit bg-transparent border-0 cursor-pointer"
+          aria-label="Add chart card"
+        >
+          ＋
+        </button>
+      </div>
+      <div className="p-2 grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        {cards.map(card => (
+          <div key={card.id} className="border border-white/10 rounded p-2">
+            <div className="flex items-center gap-2 mb-2">
+              <label className="flex items-center gap-2">X:
+                <select
+                  value={card.x}
+                  onChange={e => setCards(cs => cs.map(c => c.id === card.id ? { ...c, x: e.target.value } : c))}
+                  className="text-black bg-white rounded px-2 py-1"
+                >
+                  {fields.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">Y:
+                <select
+                  value={card.y}
+                  onChange={e => setCards(cs => cs.map(c => c.id === card.id ? { ...c, y: e.target.value } : c))}
+                  className="text-black bg-white rounded px-2 py-1"
+                >
+                  {fields.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </label>
+              <button onClick={() => removeCard(card.id)} className="ml-auto">✕</button>
+            </div>
+            <div className="bg-white p-1 rounded aspect-video">
+              <canvas ref={el => ensureChart(card.id, el as HTMLCanvasElement | null)} className="w-full h-full bg-white" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+// ChartImages Component
+
 // ChartImages Component
 const ChartImages = () => {
   const [errorA, setErrorA] = useState(false);
@@ -393,6 +577,7 @@ export default function App() {
         )}
 
         <ChartImages />
+        <ChartPreviewArea />
       </div>
     </div>
   );
