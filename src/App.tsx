@@ -218,18 +218,6 @@ const ChartPreviewArea = () => {
         maintainAspectRatio: false,
         plugins: { legend: { display: true } },
         elements: { point: { radius: 0 } },
-        // scales: {
-        //   x: {
-        //     ticks: {
-        //       autoSkip: true,
-        //     },
-        //   },
-        //   y: {
-        //     ticks: {
-        //       autoSkip: true,
-        //     }
-        //   }
-        // }
       }
     });
   };
