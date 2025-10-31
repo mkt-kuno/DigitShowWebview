@@ -4,9 +4,9 @@ import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
 const ENDPOINT = "/v1/";
-const TIMEOUT_MS = 4000;
+const TIMEOUT_MS = 5000;
 const POLL_INTERVAL = 200;
-const CHART_INTERVAL = 5000;
+const CHART_INTERVAL = 2000;
 
 // Utility functions
 const fetchWithTimeout = async (url: string, timeout = TIMEOUT_MS) => {
@@ -179,8 +179,8 @@ const ChartPreviewArea = () => {
   // fields available for X/Y selection
   const fields = [
     'time',
-    ...Array.from({ length: 16 }, (_, i) => `phy_${String(i).padStart(2, '0')}`),
     ...Array.from({ length: 16 }, (_, i) => `raw_${String(i).padStart(2, '0')}`),
+    ...Array.from({ length: 16 }, (_, i) => `phy_${String(i).padStart(2, '0')}`),
     ...Array.from({ length: 32 }, (_, i) => `param_${String(i).padStart(2, '0')}`),
   ];
 
@@ -314,7 +314,7 @@ const ChartPreviewArea = () => {
   return (
     <div className="border border-white/40 rounded-lg mb-2">
       <div className="font-bold px-3 py-1 border-b border-white/40 relative">
-        Chart Previews
+        Charts (v4.3.0 or newer)
         <button
           onClick={addCard}
           className="absolute right-2 top-1/2 -translate-y-1/2 text-inherit bg-transparent border-0 cursor-pointer"
@@ -356,7 +356,6 @@ const ChartPreviewArea = () => {
     </div>
   );
 };
-// ChartImages Component
 
 // ChartImages Component
 const ChartImages = () => {
@@ -368,7 +367,15 @@ const ChartImages = () => {
   const prevUrlA = useRef<string | null>(null);
   const prevUrlB = useRef<string | null>(null);
 
+  // Collapsible state (persisted like other cards)
+  const storageKey = 'chart-images-open';
+  const [open, setOpen] = useState<boolean>(() => {
+    const v = storage.get(storageKey);
+    return v === null ? true : v === '1';
+  });
+
   useEffect(() => {
+    if (!open) return; // do not request resources when collapsed
     let isMounted = true;
 
     const refresh = async () => {
@@ -387,7 +394,6 @@ const ChartImages = () => {
         try {
           const blob = await resA.value.blob();
           const nextUrl = URL.createObjectURL(blob);
-          // Revoke previous URL to free memory
           if (prevUrlA.current) URL.revokeObjectURL(prevUrlA.current);
           prevUrlA.current = nextUrl;
           setImageA(nextUrl);
@@ -421,7 +427,12 @@ const ChartImages = () => {
     return () => {
       isMounted = false;
       clearInterval(id);
-      // Cleanup any object URLs on unmount
+    };
+  }, [open]);
+
+  // Cleanup object URLs only when component unmounts
+  useEffect(() => {
+    return () => {
       if (prevUrlA.current) URL.revokeObjectURL(prevUrlA.current);
       if (prevUrlB.current) URL.revokeObjectURL(prevUrlB.current);
     };
@@ -438,8 +449,33 @@ const ChartImages = () => {
         padding: '0.25rem 0.75rem',
         borderBottom: '1px solid rgba(255, 255, 255, 0.4)'
       }}>
-        Charts (fallback images)
+        <span>Legacy Charts (v4.2.1 or older)</span>
+        <button
+          type="button"
+          aria-label={open ? '折りたたむ' : '展開'}
+          onClick={() => {
+            setOpen(o => {
+              const next = !o;
+              storage.set(storageKey, next ? '1' : '0');
+              return next;
+            });
+          }}
+          style={{
+            float: 'right',
+            background: 'transparent',
+            color: 'inherit',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
+            borderRadius: '4px',
+            fontSize: '0.9rem',
+            padding: '0 0.5rem',
+            lineHeight: '1.5rem',
+            cursor: 'pointer'
+          }}
+        >
+          {open ? '△' : '▽'}
+        </button>
       </div>
+      {open && (
       <div style={{ padding: '0.5rem' }}>
         <div style={{
           display: 'grid',
@@ -498,6 +534,7 @@ const ChartImages = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };
