@@ -185,12 +185,12 @@ const ChartPreviewArea = () => {
   ];
 
   type Card = { id: string; x: string; y: string };
-  const [cards, setCards] = useState<Card[]>([{ id: 'c0', x: 'time', y: 'phy_00' }]);
+  const [cards, setCards] = useState<Card[]>([{ id: 'c0', x: 'time', y: 'raw_00' }]);
   const chartsRef = useRef<Record<string, Chart | null>>({});
 
   // helper to add a card
   const addCard = () => {
-    setCards(prev => [...prev, { id: `c${Date.now()}`, x: 'time', y: 'phy_00' }]);
+    setCards(prev => [...prev, { id: `c${Date.now()}`, x: 'time', y: 'raw_00' }]);
   };
   const removeCard = (id: string) => {
     setCards(prev => prev.filter(c => c.id !== id));
@@ -211,13 +211,20 @@ const ChartPreviewArea = () => {
     chartsRef.current[id] = new Chart(ctx, {
       type: 'scatter',
       // cast datasets to any to avoid strict Chart.js dataset typing issues in TS
-      data: { labels: [], datasets: ([{ label: id, data: [], showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any },
+      data: { datasets: ([{ data: [], showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any },
       options: {
         animation: false,
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: true } },
         elements: { point: { radius: 0 } },
+        plugins: {
+          legend: { display: false },
+        },
+        // Set axis labels (Chart.js v3/v4)
+        scales: {
+          x: { title: { display: true, text: 'X' } },
+          y: { title: { display: true, text: 'Y' } }
+        } as any,
       }
     });
   };
@@ -238,11 +245,6 @@ const ChartPreviewArea = () => {
         const res = await fetchWithTimeout(url);
         if (!isMounted || !res.ok) return;
         const json = await res.json();
-
-        // Support two response shapes:
-        // 1) legacy: { label?: string[] | {field:label}, list: { [field]: number[] } }
-        // 2) new/sample: { fieldName: { label: string, list: number[] }, ... }
-
         const lists: Record<string, any[]> = {};
         const labelMap: Record<string, string> = {};
 
@@ -283,15 +285,18 @@ const ChartPreviewArea = () => {
             }
           }
           if (!ch.data.datasets || ch.data.datasets.length === 0) {
-            ch.data.datasets = ([{ label: labelMap[card.y] || card.y, data: dataPoints, showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any;
+            ch.data.datasets = ([{ data: dataPoints, showLine: true, pointRadius: 0, borderWidth: 2, tension: 0.2, spanGaps: true, borderColor: '#1976d2' }]) as any;
           } else {
-            (ch.data.datasets[0] as any).label = labelMap[card.y] || card.y;
             (ch.data.datasets[0] as any).data = dataPoints;
             (ch.data.datasets[0] as any).pointRadius = 0;
             (ch.data.datasets[0] as any).borderWidth = 2;
             (ch.data.datasets[0] as any).tension = 0.2;
             (ch.data.datasets[0] as any).spanGaps = true;
-            (ch.data.datasets[0] as any).borderColor = '#1976d2';
+            (ch.data.datasets[0] as any).borderColor = '#1f77b4';
+          }
+          if (ch.options.scales && ch.options.scales.x && ch.options.scales.y) {
+            (ch.options.scales.x.title.text as any) = labelMap[card.x] || card.x;
+            (ch.options.scales.y.title.text as any) = labelMap[card.y] || card.y;
           }
 
           ch.update();
@@ -595,7 +600,7 @@ export default function App() {
           textAlign: 'center',
           marginBottom: '0.5rem'
         }}>
-          DigiShowWebview
+          DigitShowWebview
         </h1>
 
         {data && (
