@@ -5,9 +5,23 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    minify: true,
+    minify: 'esbuild',
+    target: 'es2020',
+    cssCodeSplit: true,
+    cssMinify: true,
     sourcemap: false,
-    target: 'es2020'
+    assetsInlineLimit: 0,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom'],
+          chartjs: ['chart.js']
+        }
+      }
+    }
+  },
+  esbuild: {
+    drop: ['console', 'debugger']
   },
   server: {
     proxy: {
