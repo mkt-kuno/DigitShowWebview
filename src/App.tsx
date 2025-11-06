@@ -4,71 +4,44 @@ import { ChartImages } from './ChartImages';
 import { ChartPreviewArea } from './ChartPreview';
 import { fetchWithTimeout, POLL_INTERVAL } from './utils';
 
-const ENDPOINT = "/v1/";
-
 const categories = [
   { key: "raw", title: "Raw Value (int16_t −32768 to +32767)" },
   { key: "phy", title: "Physical Value" },
   { key: "param", title: "Parameter" },
   { key: "output", title: "Voltage Output" }
-];
+] as const;
 
 export default function App() {
   const [data, setData] = useState<Record<string, unknown> | null>(null);
   const [bgColor, setBgColor] = useState('#002020');
 
   useEffect(() => {
-    let isMounted = true;
-
+    let mounted = true;
     const poll = async () => {
       try {
-        const res = await fetchWithTimeout(ENDPOINT);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await fetchWithTimeout("/v1/");
+        if (!res.ok) throw Error(`HTTP ${res.status}`);
         const json = await res.json();
-        
-        if (isMounted) {
-          setData(json);
-          const color = (json?.system as { color?: string })?.color || '#002020';
-          setBgColor(color);
-        }
+        if (!mounted) return;
+        setData(json);
+        setBgColor(json?.system?.color ?? '#002020');
       } catch (err) {
         console.error("Fetch error:", err);
       } finally {
-        if (isMounted) {
-          setTimeout(poll, POLL_INTERVAL);
-        }
+        if (mounted) setTimeout(poll, POLL_INTERVAL);
       }
     };
-
     poll();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
   return (
     <div className="min-h-screen text-white p-2" style={{ backgroundColor: bgColor }}>
-      <div className="max-w-[1536px] mx-auto">
-        <h1 className="text-2xl font-bold text-center mb-2">
-          DigitShowWebview
-        </h1>
-
-        {data && (
-          <>
-            {categories.map(cat => 
-              data[cat.key] && (
-                <DataGroup
-                  key={cat.key}
-                  title={cat.title}
-                  data={data[cat.key] as Record<string, { label?: string; value: unknown }>}
-                  categoryKey={cat.key}
-                />
-              )
-            )}
-          </>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold text-center mb-2">DigitShowWebview</h1>
+        {data && categories.map(({ key, title }) => 
+          data[key] ? <DataGroup key={key} title={title} data={data[key] as Record<string, { label?: string; value: unknown }>} categoryKey={key} /> : null
         )}
-
         <ChartImages />
         <ChartPreviewArea />
       </div>

@@ -1,55 +1,38 @@
-// Constants
-export const TIMEOUT_MS = 5000;
-export const CHART_INTERVAL = 2000;
-export const POLL_INTERVAL = 200;
+export const [TIMEOUT_MS, CHART_INTERVAL, POLL_INTERVAL] = [5000, 2000, 200];
 
-// Fetch with timeout utility
-export const fetchWithTimeout = async (url: string, timeout = TIMEOUT_MS) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
+export const fetchWithTimeout = (url: string, timeout = TIMEOUT_MS) => {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeout);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
 };
 
-// Cookie utilities
 const setCookie = (name: string, value: string, days = 365) => {
   try {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${new Date(Date.now() + days * 864e5).toUTCString()}; path=/`;
   } catch {
     // ignore
   }
 };
 
-const getCookie = (name: string): string | null => {
+const getCookie = (name: string) => {
   try {
-    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-    return match ? decodeURIComponent(match[1]) : null;
+    return document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] ? decodeURIComponent(RegExp.$1) : null;
   } catch {
     return null;
   }
 };
 
-// Storage utility with cookie fallback
 export const storage = {
-  get(key: string): string | null {
+  get: (key: string) => {
     try {
-      const v = window.localStorage.getItem(key);
-      if (v !== null) return v;
+      return localStorage.getItem(key) ?? getCookie(key);
     } catch {
-      // ignore
+      return getCookie(key);
     }
-    return getCookie(key);
   },
-  set(key: string, value: string) {
-    try {
-      window.localStorage.setItem(key, value);
+  set: (key: string, value: string) => {
+    try { 
+      localStorage.setItem(key, value); 
     } catch {
       // ignore
     }
@@ -57,6 +40,5 @@ export const storage = {
   }
 };
 
-// Unique ID generator
-let idCounter = 0;
-export const generateId = () => `c${Date.now()}_${idCounter++}`;
+let id = 0;
+export const generateId = () => `c${Date.now()}_${id++}`;

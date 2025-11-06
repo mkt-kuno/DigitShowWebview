@@ -1,130 +1,64 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchWithTimeout, storage, CHART_INTERVAL } from './utils';
 
+const useImage = (url: string, enabled: boolean) => {
+  const [state, setState] = useState<{ img: string | null; err: boolean }>({ img: null, err: false });
+  const prevUrl = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let mounted = true;
+    const load = async () => {
+      try {
+        const res = await fetchWithTimeout(url);
+        if (!mounted || !res.ok) throw Error();
+        const blob = await res.blob();
+        const nextUrl = URL.createObjectURL(blob);
+        if (prevUrl.current) URL.revokeObjectURL(prevUrl.current);
+        prevUrl.current = nextUrl;
+        setState({ img: nextUrl, err: false });
+      } catch {
+        setState(s => ({ ...s, err: true }));
+      }
+    };
+    load();
+    const id = setInterval(load, CHART_INTERVAL);
+    return () => { mounted = false; clearInterval(id); };
+  }, [url, enabled]);
+
+  useEffect(() => () => { if (prevUrl.current) URL.revokeObjectURL(prevUrl.current); }, []);
+  return state;
+};
+
+const Img = ({ name, url, open }: { name: string; url: string; open: boolean }) => {
+  const { img, err } = useImage(url, open);
+  return (
+    <div className={err ? 'opacity-50' : ''}>
+      {img ? (
+        <img src={img} alt={`Chart ${name}${err ? ' (load failed)' : ''}`} className="w-full h-auto rounded border border-white/10 bg-white/5" />
+      ) : (
+        <div className="w-full h-[200px] rounded border border-white/10 bg-white/5" />
+      )}
+    </div>
+  );
+};
+
 export const ChartImages = () => {
-  const [errorA, setErrorA] = useState(false);
-  const [errorB, setErrorB] = useState(false);
-  const [imageA, setImageA] = useState<string | null>(null);
-  const [imageB, setImageB] = useState<string | null>(null);
-  const prevUrlA = useRef<string | null>(null);
-  const prevUrlB = useRef<string | null>(null);
-
-  const storageKey = 'chart-images-open';
-  const [open, setOpen] = useState<boolean>(() => {
-    const v = storage.get(storageKey);
-    return v === null ? true : v === '1';
-  });
-
-  useEffect(() => {
-    if (!open) return;
-    let isMounted = true;
-
-    const refresh = async () => {
-      const urlA = `/v1/img/chart_a`;
-      const urlB = `/v1/img/chart_b`;
-
-      const [resA, resB] = await Promise.allSettled([
-        fetchWithTimeout(urlA),
-        fetchWithTimeout(urlB)
-      ]);
-
-      if (!isMounted) return;
-
-      if (resA.status === 'fulfilled' && resA.value.ok) {
-        try {
-          const blob = await resA.value.blob();
-          const nextUrl = URL.createObjectURL(blob);
-          if (prevUrlA.current) URL.revokeObjectURL(prevUrlA.current);
-          prevUrlA.current = nextUrl;
-          setImageA(nextUrl);
-          setErrorA(false);
-        } catch {
-          setErrorA(true);
-        }
-      } else {
-        setErrorA(true);
-      }
-
-      if (resB.status === 'fulfilled' && resB.value.ok) {
-        try {
-          const blob = await resB.value.blob();
-          const nextUrl = URL.createObjectURL(blob);
-          if (prevUrlB.current) URL.revokeObjectURL(prevUrlB.current);
-          prevUrlB.current = nextUrl;
-          setImageB(nextUrl);
-          setErrorB(false);
-        } catch {
-          setErrorB(true);
-        }
-      } else {
-        setErrorB(true);
-      }
-    };
-
-    refresh();
-    const id = setInterval(refresh, CHART_INTERVAL);
-    return () => {
-      isMounted = false;
-      clearInterval(id);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    return () => {
-      if (prevUrlA.current) URL.revokeObjectURL(prevUrlA.current);
-      if (prevUrlB.current) URL.revokeObjectURL(prevUrlB.current);
-    };
-  }, []);
+  const [open, setOpen] = useState(() => storage.get('chart-images-open') !== '0');
+  const toggle = () => setOpen(o => (storage.set('chart-images-open', o ? '0' : '1'), !o));
 
   return (
     <div className="border border-white/40 rounded-lg mb-2">
       <div className="font-bold px-3 py-1 border-b border-white/40">
         <span>Legacy Charts (v4.2.1 or older)</span>
-        <button
-          type="button"
-          aria-label={open ? '折りたたむ' : '展開'}
-          onClick={() => {
-            setOpen(o => {
-              const next = !o;
-              storage.set(storageKey, next ? '1' : '0');
-              return next;
-            });
-          }}
-          className="float-right bg-transparent text-inherit border border-white/40 rounded text-sm px-2 leading-6 cursor-pointer"
-        >
+        <button onClick={toggle} className="float-right bg-transparent text-inherit border border-white/40 rounded text-sm px-2 leading-6 cursor-pointer">
           {open ? '△' : '▽'}
         </button>
       </div>
       {open && (
-        <div className="p-2">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
-            <div className={errorA ? 'opacity-50' : ''}>
-              {imageA ? (
-                <img
-                  src={imageA}
-                  alt={errorA ? 'Chart A (load failed)' : 'Chart A'}
-                  className="w-full h-auto rounded border border-white/10 bg-white/5"
-                  onError={() => setErrorA(true)}
-                  onLoad={() => setErrorA(false)}
-                />
-              ) : (
-                <div className="w-full h-[200px] rounded border border-white/10 bg-white/5" />
-              )}
-            </div>
-            <div className={errorB ? 'opacity-50' : ''}>
-              {imageB ? (
-                <img
-                  src={imageB}
-                  alt={errorB ? 'Chart B (load failed)' : 'Chart B'}
-                  className="w-full h-auto rounded border border-white/10 bg-white/5"
-                  onError={() => setErrorB(true)}
-                  onLoad={() => setErrorB(false)}
-                />
-              ) : (
-                <div className="w-full h-[200px] rounded border border-white/10 bg-white/5" />
-              )}
-            </div>
-          </div>
+        <div className="p-2 grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
+          <Img name="A" url="/v1/img/chart_a" open={open} />
+          <Img name="B" url="/v1/img/chart_b" open={open} />
         </div>
       )}
     </div>
