@@ -29,7 +29,7 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
     <div className="bg-white rounded">
       <Plot
         data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
-        layout={{ autosize: true, margin: { l: 40, r: 20, t: 20, b: 40 }, xaxis: { title: { text: xLabel } }, yaxis: { title: { text: yLabel } }, paper_bgcolor: 'white', plot_bgcolor: 'white' }}
+        layout={{ autosize: true, margin: { l: 60, r: 20, t: 20, b: 40 }, xaxis: { title: { text: xLabel } }, yaxis: { title: { text: yLabel } }, paper_bgcolor: 'white', plot_bgcolor: 'white' }}
         config={{ displayModeBar: false }}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler
