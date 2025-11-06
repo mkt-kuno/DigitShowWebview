@@ -15,7 +15,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom'],
-          plotly: ['plotly.js-dist-min', 'react-plotly.js']
+          plotly: ['plotly.js-basic-dist-min', 'react-plotly.js']
         }
       }
     }
