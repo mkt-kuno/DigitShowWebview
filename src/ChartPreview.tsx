@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import Plot from './Plot';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { fetchWithTimeout, generateId, CHART_INTERVAL } from './utils';
+
+const Plot = lazy(() => import('./Plot'));
 
 const fields = ['time', ...[16, 16, 32].flatMap((n, t) => Array.from({ length: n }, (_, i) => `${['raw', 'phy', 'param'][t]}_${i.toString().padStart(2, '0')}`))];
 
@@ -27,13 +28,15 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
       <button onClick={() => onRemove(card.id)} className="ml-auto">✕</button>
     </div>
     <div className="bg-white rounded">
-      <Plot
-        data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
-        layout={{ autosize: true, margin: { l: 60, r: 20, t: 20, b: 40 }, xaxis: { title: { text: xLabel } }, yaxis: { title: { text: yLabel } }, paper_bgcolor: 'white', plot_bgcolor: 'white' }}
-        config={{ displayModeBar: false }}
-        style={{ width: '100%', height: '100%' }}
-        useResizeHandler
-      />
+      <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
+        <Plot
+          data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
+          layout={{ autosize: true, margin: { l: 60, r: 20, t: 20, b: 40 }, xaxis: { title: { text: xLabel } }, yaxis: { title: { text: yLabel } }, paper_bgcolor: 'white', plot_bgcolor: 'white' }}
+          config={{ displayModeBar: false }}
+          style={{ width: '100%', height: '100%' }}
+          useResizeHandler
+        />
+      </Suspense>
     </div>
   </div>
 );
