@@ -1,58 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-
-const TIMEOUT_MS = 5000;
-const CHART_INTERVAL = 2000;
-
-const setCookie = (name: string, value: string, days = 365) => {
-  try {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
-  } catch {
-    // ignore
-  }
-};
-
-const getCookie = (name: string): string | null => {
-  try {
-    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-    return match ? decodeURIComponent(match[1]) : null;
-  } catch {
-    return null;
-  }
-};
-
-const storage = {
-  get(key: string): string | null {
-    try {
-      const v = window.localStorage.getItem(key);
-      if (v !== null) return v;
-    } catch {
-      // ignore
-    }
-    return getCookie(key);
-  },
-  set(key: string, value: string) {
-    try {
-      window.localStorage.setItem(key, value);
-    } catch {
-      // ignore
-    }
-    setCookie(key, value);
-  }
-};
-
-const fetchWithTimeout = async (url: string, timeout = TIMEOUT_MS) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-};
+import { fetchWithTimeout, storage, CHART_INTERVAL } from './utils';
 
 export const ChartImages = () => {
   const [errorA, setErrorA] = useState(false);

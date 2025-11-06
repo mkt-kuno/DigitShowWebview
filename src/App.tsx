@@ -2,23 +2,9 @@ import { useState, useEffect } from 'react';
 import { DataGroup } from './DataDisplay';
 import { ChartImages } from './ChartImages';
 import { ChartPreviewArea } from './ChartPreview';
+import { fetchWithTimeout, POLL_INTERVAL } from './utils';
 
 const ENDPOINT = "/v1/";
-const TIMEOUT_MS = 5000;
-const POLL_INTERVAL = 200;
-
-const fetchWithTimeout = async (url: string, timeout = TIMEOUT_MS) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-};
 
 const categories = [
   { key: "raw", title: "Raw Value (int16_t −32768 to +32767)" },

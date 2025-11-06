@@ -1,21 +1,6 @@
 import { useState, useEffect } from 'react';
 import Plot from 'react-plotly.js';
-
-const TIMEOUT_MS = 5000;
-const CHART_INTERVAL = 2000;
-
-const fetchWithTimeout = async (url: string, timeout = TIMEOUT_MS) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-};
+import { fetchWithTimeout, generateId, CHART_INTERVAL } from './utils';
 
 const fields = [
   'time',
@@ -90,7 +75,7 @@ const ChartCard = ({ card, onRemove, onUpdateX, onUpdateY, data, xLabel, yLabel 
 );
 
 export const ChartPreviewArea = () => {
-  const [cards, setCards] = useState<Card[]>([{ id: 'c0', x: 'time', y: 'raw_00' }]);
+  const [cards, setCards] = useState<Card[]>([{ id: generateId(), x: 'time', y: 'raw_00' }]);
   const [chartData, setChartData] = useState<Record<string, { x: number[]; y: (number | null)[]; xLabel: string; yLabel: string }>>({});
 
   useEffect(() => {
@@ -169,7 +154,7 @@ export const ChartPreviewArea = () => {
   }, [cards]);
 
   const addCard = () => {
-    setCards(prev => [...prev, { id: `c${Date.now()}`, x: 'time', y: 'raw_00' }]);
+    setCards(prev => [...prev, { id: generateId(), x: 'time', y: 'raw_00' }]);
   };
 
   const removeCard = (id: string) => {

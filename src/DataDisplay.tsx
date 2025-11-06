@@ -1,42 +1,5 @@
 import { useState } from 'react';
-
-const setCookie = (name: string, value: string, days = 365) => {
-  try {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
-  } catch {
-    // ignore
-  }
-};
-
-const getCookie = (name: string): string | null => {
-  try {
-    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-    return match ? decodeURIComponent(match[1]) : null;
-  } catch {
-    return null;
-  }
-};
-
-const storage = {
-  get(key: string): string | null {
-    try {
-      const v = window.localStorage.getItem(key);
-      if (v !== null) return v;
-    } catch {
-      // ignore
-    }
-    return getCookie(key);
-  },
-  set(key: string, value: string) {
-    try {
-      window.localStorage.setItem(key, value);
-    } catch {
-      // ignore
-    }
-    setCookie(key, value);
-  }
-};
+import { storage } from './utils';
 
 type DisplayValue = { text: string; invalid?: boolean };
 
