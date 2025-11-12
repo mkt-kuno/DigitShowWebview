@@ -20,26 +20,48 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
   data: { x: number[]; y: (number | null)[] };
   xLabel: string;
   yLabel: string;
-}) => (
-  <div className="border border-white/10 rounded p-2">
-    <div className="flex items-center gap-2 mb-2">
-      <label className="flex items-center gap-2">X:<Select value={card.x} onChange={v => onUpdate(card.id, 'x', v)} /></label>
-      <label className="flex items-center gap-2">Y:<Select value={card.y} onChange={v => onUpdate(card.id, 'y', v)} /></label>
-      <button onClick={() => onRemove(card.id)} className="ml-auto">✕</button>
+}) => {
+  const calcRange = (values: (number | null)[]) => {
+    const valid = values.filter((v): v is number => v != null && Number.isFinite(v));
+    if (valid.length === 0) return undefined;
+    const min = Math.min(...valid);
+    const max = Math.max(...valid);
+    const range = max - min;
+    const margin = range * 0.05 || 1;
+    return [min - margin, max + margin];
+  };
+
+  const xRange = calcRange(data.x);
+  const yRange = calcRange(data.y);
+
+  return (
+    <div className="border border-white/10 rounded p-2">
+      <div className="flex items-center gap-2 mb-2">
+        <label className="flex items-center gap-2">X:<Select value={card.x} onChange={v => onUpdate(card.id, 'x', v)} /></label>
+        <label className="flex items-center gap-2">Y:<Select value={card.y} onChange={v => onUpdate(card.id, 'y', v)} /></label>
+        <button onClick={() => onRemove(card.id)} className="ml-auto">✕</button>
+      </div>
+      <div className="bg-white rounded aspect-[4/3]">
+        <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
+          <Plot
+            data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
+            layout={{ 
+              autosize: true, 
+              margin: { l: 70, r: 20, t: 20, b: 40 }, 
+              xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' }, 
+              yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' }, 
+              paper_bgcolor: 'white', 
+              plot_bgcolor: 'white' 
+            }}
+            config={{ displayModeBar: false }}
+            style={{ width: '100%', height: '100%' }}
+            useResizeHandler
+          />
+        </Suspense>
+      </div>
     </div>
-    <div className="bg-white rounded">
-      <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
-        <Plot
-          data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
-          layout={{ autosize: true, margin: { l: 60, r: 20, t: 20, b: 40 }, xaxis: { title: { text: xLabel } }, yaxis: { title: { text: yLabel } }, paper_bgcolor: 'white', plot_bgcolor: 'white' }}
-          config={{ displayModeBar: false }}
-          style={{ width: '100%', height: '100%' }}
-          useResizeHandler
-        />
-      </Suspense>
-    </div>
-  </div>
-);
+  );
+};
 
 export const ChartPreviewArea = () => {
   const [cards, setCards] = useState<Card[]>([{ id: generateId(), x: 'time', y: 'raw_00' }]);
