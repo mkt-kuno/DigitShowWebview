@@ -71,3 +71,29 @@ export default defineConfig([
   },
 ])
 ```
+
+## Setup & run
+
+This project is compatible with pnpm — if you previously used Bun, use pnpm instead:
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+If you previously have a `package-lock.json` (npm), remove it or convert it with `pnpm import` to avoid lockfile conflicts:
+
+```bash
+rm package-lock.json
+# or
+pnpm import
+```
+
+Start dev server:
+
+```bash
+pnpm dev
+```
+
+Charting library switched from Plotly → uPlot. Files that changed: `src/Plot.tsx` (now wraps `uplot`) and `src/ChartPreview.tsx` (re-uses same component).

@@ -13,9 +13,9 @@ const Select = ({ value, onChange }: { value: string; onChange: (v: string) => v
   </select>
 );
 
-const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: { 
-  card: Card; 
-  onRemove: (id: string) => void; 
+const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
+  card: Card;
+  onRemove: (id: string) => void;
   onUpdate: (id: string, axis: 'x' | 'y', v: string) => void;
   data: { x: number[]; y: (number | null)[] };
   xLabel: string;
@@ -41,17 +41,17 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
         <label className="flex items-center gap-2">Y:<Select value={card.y} onChange={v => onUpdate(card.id, 'y', v)} /></label>
         <button onClick={() => onRemove(card.id)} className="ml-auto">✕</button>
       </div>
-      <div className="bg-white rounded aspect-[4/3]">
+      <div className="bg-white rounded aspect-4/3">
         <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
           <Plot
             data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
-            layout={{ 
-              autosize: true, 
-              margin: { l: 70, r: 20, t: 20, b: 40 }, 
-              xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' }, 
-              yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' }, 
-              paper_bgcolor: 'white', 
-              plot_bgcolor: 'white' 
+            layout={{
+              autosize: true,
+              margin: { l: 70, r: 20, t: 20, b: 40 },
+              xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' },
+              yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' },
+              paper_bgcolor: 'white',
+              plot_bgcolor: 'white'
             }}
             config={{ displayModeBar: false }}
             style={{ width: '100%', height: '100%' }}
