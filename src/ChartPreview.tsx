@@ -76,23 +76,23 @@ export const ChartPreviewArea = () => {
         const res = await fetchWithTimeout(`/v1/preview${params ? '?' + params : ''}`);
         if (!mounted || !res.ok) return;
         const json = await res.json();
-        const lists: Record<string, number[]> = {};
+        const data_list: Record<string, number[]> = {};
         const labels: Record<string, string> = {};
 
-        if (json?.list) {
-          Object.assign(lists, json.list);
+        if (json?.data) {
+          Object.assign(data_list, json.data);
           if (json.label) Object.entries(json.label).forEach(([k, v]) => { labels[k] = String(v); });
         } else {
           Object.entries(json).forEach(([k, v]) => {
-            const obj = v as { list?: number[]; label?: string };
-            if (obj?.list) lists[k] = obj.list;
+            const obj = v as { data_list?: number[]; label?: string };
+            if (obj?.data) data_list[k] = obj.data;
             if (obj?.label) labels[k] = String(obj.label);
           });
         }
 
         setChartData(Object.fromEntries(cards.map(c => [c.id, {
-          x: lists[c.x]?.slice(0, Math.min(lists[c.x]?.length ?? 0, lists[c.y]?.length ?? 0)).map(Number) ?? [],
-          y: lists[c.y]?.slice(0, Math.min(lists[c.x]?.length ?? 0, lists[c.y]?.length ?? 0)).map(v => v == null || !Number.isFinite(+v) ? null : +v) ?? [],
+          x: data_list[c.x]?.slice(0, Math.min(data_list[c.x]?.length ?? 0, data_list[c.y]?.length ?? 0)).map(Number) ?? [],
+          y: data_list[c.y]?.slice(0, Math.min(data_list[c.x]?.length ?? 0, data_list[c.y]?.length ?? 0)).map(v => v == null || !Number.isFinite(+v) ? null : +v) ?? [],
           xLabel: labels[c.x] ?? c.x,
           yLabel: labels[c.y] ?? c.y
         }])));
