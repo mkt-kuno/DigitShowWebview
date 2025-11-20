@@ -13,9 +13,9 @@ const Select = ({ value, onChange }: { value: string; onChange: (v: string) => v
   </select>
 );
 
-const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: { 
-  card: Card; 
-  onRemove: (id: string) => void; 
+const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
+  card: Card;
+  onRemove: (id: string) => void;
   onUpdate: (id: string, axis: 'x' | 'y', v: string) => void;
   data: { x: number[]; y: (number | null)[] };
   xLabel: string;
@@ -45,13 +45,13 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
         <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
           <Plot
             data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
-            layout={{ 
-              autosize: true, 
-              margin: { l: 70, r: 20, t: 20, b: 40 }, 
-              xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' }, 
-              yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' }, 
-              paper_bgcolor: 'white', 
-              plot_bgcolor: 'white' 
+            layout={{
+              autosize: true,
+              margin: { l: 70, r: 20, t: 20, b: 40 },
+              xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' },
+              yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' },
+              paper_bgcolor: 'white',
+              plot_bgcolor: 'white'
             }}
             config={{ displayModeBar: false }}
             style={{ width: '100%', height: '100%' }}
@@ -63,9 +63,35 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
   );
 };
 
+const loadCardsFromCookie = (): Card[] => {
+  try {
+    const cookie = document.cookie.split('; ').find(row => row.startsWith('chartCards='));
+    if (cookie) {
+      const data = JSON.parse(decodeURIComponent(cookie.split('=')[1]));
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {
+    console.error('Failed to load chart cards from cookie', e);
+  }
+  return [{ id: generateId(), x: 'time', y: 'raw_00' }];
+};
+
+const saveCardsToCookie = (cards: Card[]) => {
+  try {
+    const data = JSON.stringify(cards.map(c => ({ id: c.id, x: c.x, y: c.y })));
+    document.cookie = `chartCards=${encodeURIComponent(data)}; path=/; max-age=31536000`;
+  } catch (e) {
+    console.error('Failed to save chart cards to cookie', e);
+  }
+};
+
 export const ChartPreviewArea = () => {
-  const [cards, setCards] = useState<Card[]>([{ id: generateId(), x: 'time', y: 'raw_00' }]);
+  const [cards, setCards] = useState<Card[]>(() => loadCardsFromCookie());
   const [chartData, setChartData] = useState<Record<string, { x: number[]; y: (number | null)[]; xLabel: string; yLabel: string }>>({});
+
+  useEffect(() => {
+    saveCardsToCookie(cards);
+  }, [cards]);
 
   useEffect(() => {
     let mounted = true;
@@ -84,7 +110,7 @@ export const ChartPreviewArea = () => {
           if (json.label) Object.entries(json.label).forEach(([k, v]) => { labels[k] = String(v); });
         } else {
           Object.entries(json).forEach(([k, v]) => {
-            const obj = v as { data_list?: number[]; label?: string };
+            const obj = v as { data?: number[]; label?: string };
             if (obj?.data) data_list[k] = obj.data;
             if (obj?.label) labels[k] = String(obj.label);
           });
