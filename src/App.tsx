@@ -3,6 +3,7 @@ import { DataGroup } from './DataDisplay';
 import { ChartImages } from './ChartImages';
 import { ChartPreviewArea } from './ChartPreview';
 import { fetchWithTimeout, POLL_INTERVAL } from './utils';
+import { version } from '../package.json';
 
 const categories = [
   { key: "raw", title: "Raw Value (int16_t −32768 to +32767)" },
@@ -36,10 +37,13 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen text-white p-2" style={{ backgroundColor: bgColor }}>
+    <div className="min-h-screen text-white p-2 relative" style={{ backgroundColor: bgColor }}>
+      <div className="absolute top-2 right-2 text-base opacity-50 hover:opacity-100">
+        <a href="https://github.com/mkt-kuno/DigitShowWebview/releases">v{version}</a>
+      </div>
       <div className="max-w-7xl mx-auto">
         <h1 className="text-2xl font-bold text-center mb-2">DigitShowWebview</h1>
-        {data && categories.map(({ key, title }) => 
+        {data && categories.map(({ key, title }) =>
           data[key] ? <DataGroup key={key} title={title} data={data[key] as Record<string, { label?: string; value: unknown }>} categoryKey={key} /> : null
         )}
         <ChartImages />
