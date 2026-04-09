@@ -15,7 +15,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('react-plotly.js') || id.includes('plotly.js/lib/')) {
+          if (id.includes('react-plotly.js') || id.includes('plotly.js-cartesian-dist-min')) {
             return 'plotly';
           }
           if (id.includes('react-dom') || id.includes('react')) {

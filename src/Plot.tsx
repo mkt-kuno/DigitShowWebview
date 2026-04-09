@@ -1,10 +1,6 @@
-import Plotly from 'plotly.js/lib/core';
-import scatter from 'plotly.js/lib/scatter';
-import scattergl from 'plotly.js/lib/scattergl';
+import Plotly from 'plotly.js-cartesian-dist-min';
 import type { ComponentType } from 'react';
 import createPlotlyComponentModule from 'react-plotly.js/factory';
-
-Plotly.register([scatter, scattergl]);
 
 type FactoryModule = {
 	default?: (plotly: unknown) => ComponentType<any>;
