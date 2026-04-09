@@ -25,9 +25,6 @@ export default defineConfig({
       }
     }
   },
-  esbuild: {
-    drop: ['console', 'debugger']
-  },
   server: {
     proxy: {
       '/v1': {
