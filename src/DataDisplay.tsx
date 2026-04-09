@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { storage } from './utils';
 
+const guardedKeys = new Set(['phy', 'param']);
+
 const formatValue = (key: string, v: unknown) => {
-  const needsGuard = ['phy', 'param'].includes(key);
+  const needsGuard = guardedKeys.has(key);
   if (needsGuard) {
     if (v == null) return { text: 'null', invalid: true };
     if (typeof v !== 'number') return { text: String(v), invalid: true };
@@ -18,14 +20,18 @@ const DataItem = ({ label, value }: { label: string; value: ReturnType<typeof fo
   </div>
 );
 
+const MemoDataItem = memo(DataItem);
+
 export const DataGroup = ({ title, data, categoryKey }: { title: string; data: Record<string, { label?: string; value: unknown }>; categoryKey: string }) => {
   const key = `dg-open-${categoryKey}`;
   const [open, setOpen] = useState(() => storage.get(key) !== '0');
-  const toggle = () => setOpen(o => (storage.set(key, o ? '0' : '1'), !o));
+  const toggle = useCallback(() => setOpen(o => (storage.set(key, o ? '0' : '1'), !o)), [key]);
 
-  const entries = Object.entries(data)
-    .sort(([a], [b]) => +a - +b)
-    .map(([id, { label, value }]) => ({ id: id.padStart(2, '0'), label: label || id, value: formatValue(categoryKey, value) }));
+  const entries = useMemo(() => (
+    Object.entries(data)
+      .sort(([a], [b]) => +a - +b)
+      .map(([id, { label, value }]) => ({ id: id.padStart(2, '0'), label: label || id, value: formatValue(categoryKey, value) }))
+  ), [data, categoryKey]);
 
   return (
     <div className="border border-white/40 rounded-lg mb-2">
@@ -38,7 +44,7 @@ export const DataGroup = ({ title, data, categoryKey }: { title: string; data: R
       {open && (
         <div className="p-2">
           <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-1">
-            {entries.map(({ id, label, value }) => <DataItem key={id} label={label} value={value} />)}
+            {entries.map(({ id, label, value }) => <MemoDataItem key={id} label={label} value={value} />)}
           </div>
         </div>
       )}

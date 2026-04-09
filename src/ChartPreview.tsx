@@ -1,4 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { memo, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Data, Layout } from 'plotly.js';
 import { fetchWithTimeout, generateId, CHART_INTERVAL } from './utils';
 
 const Plot = lazy(() => import('./Plot'));
@@ -6,33 +7,94 @@ const Plot = lazy(() => import('./Plot'));
 const fields = ['time', ...[16, 16, 32].flatMap((n, t) => Array.from({ length: n }, (_, i) => `${['raw', 'phy', 'param'][t]}_${i.toString().padStart(2, '0')}`))];
 
 type Card = { id: string; x: string; y: string };
+type ChartSeries = { x: number[]; y: (number | null)[]; xLabel: string; yLabel: string };
 
-const Select = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+const EMPTY_SERIES: ChartSeries = { x: [], y: [], xLabel: 'x', yLabel: 'y' };
+const PLOT_CONFIG = { displayModeBar: false };
+
+const hasWebGLSupport = () => {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  } catch {
+    return false;
+  }
+};
+
+const calcRange = (values: (number | null)[]) => {
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+
+  for (let i = 0; i < values.length; i += 1) {
+    const value = values[i];
+    if (value == null || !Number.isFinite(value)) continue;
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return undefined;
+  const range = max - min;
+  const margin = range * 0.05 || 1;
+  return [min - margin, max + margin];
+};
+
+const sameNumberArray = (a: number[], b: number[]) => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
+const sameNullableNumberArray = (a: (number | null)[], b: (number | null)[]) => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
+const sameSeries = (a: ChartSeries | undefined, b: ChartSeries | undefined) => {
+  if (!a || !b) return false;
+  return a.xLabel === b.xLabel
+    && a.yLabel === b.yLabel
+    && sameNumberArray(a.x, b.x)
+    && sameNullableNumberArray(a.y, b.y);
+};
+
+const Select = memo(({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
   <select value={value} onChange={e => onChange(e.target.value)} className="text-black bg-white rounded px-2 py-1">
     {fields.map(f => <option key={f} value={f}>{f}</option>)}
   </select>
-);
+));
 
-const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
+const ChartCard = memo(({ card, onRemove, onUpdate, data, xLabel, yLabel, webglEnabled }: {
   card: Card;
   onRemove: (id: string) => void;
   onUpdate: (id: string, axis: 'x' | 'y', v: string) => void;
   data: { x: number[]; y: (number | null)[] };
   xLabel: string;
   yLabel: string;
+  webglEnabled: boolean;
 }) => {
-  const calcRange = (values: (number | null)[]) => {
-    const valid = values.filter((v): v is number => v != null && Number.isFinite(v));
-    if (valid.length === 0) return undefined;
-    const min = Math.min(...valid);
-    const max = Math.max(...valid);
-    const range = max - min;
-    const margin = range * 0.05 || 1;
-    return [min - margin, max + margin];
-  };
+  const xRange = useMemo(() => calcRange(data.x), [data.x]);
+  const yRange = useMemo(() => calcRange(data.y), [data.y]);
 
-  const xRange = calcRange(data.x);
-  const yRange = calcRange(data.y);
+  const traceType = webglEnabled ? 'scattergl' : 'scatter';
+
+  const plotData = useMemo<Data[]>(
+    () => [{ x: data.x, y: data.y, type: traceType, mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }],
+    [data.x, data.y, traceType]
+  );
+
+  const layout = useMemo<Partial<Layout>>(() => ({
+    autosize: true,
+    margin: { l: 70, r: 20, t: 20, b: 40 },
+    xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' as const },
+    yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' as const },
+    paper_bgcolor: 'white',
+    plot_bgcolor: 'white'
+  }), [xLabel, xRange, yLabel, yRange]);
 
   return (
     <div className="border border-white/10 rounded p-2">
@@ -44,16 +106,9 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
       <div className="bg-white rounded aspect-[4/3]">
         <Suspense fallback={<div className="flex items-center justify-center h-64 text-gray-500">Loading chart...</div>}>
           <Plot
-            data={[{ x: data.x, y: data.y, type: 'scattergl', mode: 'lines', line: { color: '#1f77b4', width: 2 }, connectgaps: true }]}
-            layout={{
-              autosize: true,
-              margin: { l: 70, r: 20, t: 20, b: 40 },
-              xaxis: { title: { text: xLabel }, range: xRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' },
-              yaxis: { title: { text: yLabel }, range: yRange, zeroline: false, linecolor: 'black', linewidth: 1, mirror: true, ticks: 'outside' },
-              paper_bgcolor: 'white',
-              plot_bgcolor: 'white'
-            }}
-            config={{ displayModeBar: false }}
+            data={plotData}
+            layout={layout}
+            config={PLOT_CONFIG}
             style={{ width: '100%', height: '100%' }}
             useResizeHandler
           />
@@ -61,7 +116,7 @@ const ChartCard = ({ card, onRemove, onUpdate, data, xLabel, yLabel }: {
       </div>
     </div>
   );
-};
+});
 
 const loadCardsFromCookie = (): Card[] => {
   try {
@@ -87,20 +142,28 @@ const saveCardsToCookie = (cards: Card[]) => {
 
 export const ChartPreviewArea = () => {
   const [cards, setCards] = useState<Card[]>(() => loadCardsFromCookie());
-  const [chartData, setChartData] = useState<Record<string, { x: number[]; y: (number | null)[]; xLabel: string; yLabel: string }>>({});
+  const [chartData, setChartData] = useState<Record<string, ChartSeries>>({});
+  const [webglEnabled] = useState(() => hasWebGLSupport());
+  const requestInFlight = useRef(false);
 
   useEffect(() => {
     saveCardsToCookie(cards);
   }, [cards]);
 
   useEffect(() => {
-    let mounted = true;
+    let active = true;
     const update = async () => {
-      if (!cards.length) return;
+      if (!active || requestInFlight.current) return;
+      if (!cards.length) {
+        setChartData({});
+        return;
+      }
+
+      requestInFlight.current = true;
       const params = [...new Set(cards.flatMap(c => [c.x, c.y]))].join('&');
       try {
         const res = await fetchWithTimeout(`/v1/preview${params ? '?' + params : ''}`);
-        if (!mounted || !res.ok) return;
+        if (!active || !res.ok) return;
         const json = await res.json();
         const data_list: Record<string, number[]> = {};
         const labels: Record<string, string> = {};
@@ -116,39 +179,79 @@ export const ChartPreviewArea = () => {
           });
         }
 
-        setChartData(Object.fromEntries(cards.map(c => [c.id, {
-          x: data_list[c.x]?.slice(0, Math.min(data_list[c.x]?.length ?? 0, data_list[c.y]?.length ?? 0)).map(Number) ?? [],
-          y: data_list[c.y]?.slice(0, Math.min(data_list[c.x]?.length ?? 0, data_list[c.y]?.length ?? 0)).map(v => v == null || !Number.isFinite(+v) ? null : +v) ?? [],
-          xLabel: labels[c.x] ?? c.x,
-          yLabel: labels[c.y] ?? c.y
-        }])));
+        const nextData = Object.fromEntries(cards.map(c => {
+          const xSource = data_list[c.x] ?? [];
+          const ySource = data_list[c.y] ?? [];
+          const len = Math.min(xSource.length, ySource.length);
+          const x = xSource.slice(0, len).map(Number);
+          const y = ySource.slice(0, len).map(v => {
+            const num = Number(v);
+            return Number.isFinite(num) ? num : null;
+          });
+
+          return [c.id, {
+            x,
+            y,
+            xLabel: labels[c.x] ?? c.x,
+            yLabel: labels[c.y] ?? c.y
+          }];
+        })) as Record<string, ChartSeries>;
+
+        setChartData(prev => {
+          const prevKeys = Object.keys(prev);
+          const nextKeys = Object.keys(nextData);
+          if (prevKeys.length !== nextKeys.length) return nextData;
+
+          for (let i = 0; i < nextKeys.length; i += 1) {
+            const key = nextKeys[i];
+            if (!sameSeries(prev[key], nextData[key])) return nextData;
+          }
+          return prev;
+        });
       } catch (err) {
         console.error('preview fetch error', err);
+      } finally {
+        requestInFlight.current = false;
       }
     };
     update();
     const id = setInterval(update, CHART_INTERVAL);
-    return () => { mounted = false; clearInterval(id); };
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
   }, [cards]);
 
-  const update = (id: string, axis: 'x' | 'y', v: string) => setCards(prev => prev.map(c => c.id === id ? { ...c, [axis]: v } : c));
+  const updateCardAxis = useCallback((id: string, axis: 'x' | 'y', v: string) => {
+    setCards(prev => prev.map(c => (c.id === id ? { ...c, [axis]: v } : c)));
+  }, []);
+
+  const removeCard = useCallback((id: string) => {
+    setCards(prev => prev.filter(c => c.id !== id));
+  }, []);
+
+  const addCard = useCallback(() => {
+    setCards(prev => [...prev, { id: generateId(), x: 'time', y: 'raw_00' }]);
+  }, []);
 
   return (
     <div className="border border-white/40 rounded-lg mb-2">
       <div className="font-bold px-3 py-1 border-b border-white/40 relative">
         Charts
-        <button onClick={() => setCards(p => [...p, { id: generateId(), x: 'time', y: 'raw_00' }])} className="absolute right-2 top-1/2 -translate-y-1/2">＋</button>
+        <span className="ml-3 text-xs font-normal opacity-80">{webglEnabled ? 'GPU: WebGL enabled' : 'GPU: fallback (scatter)'}</span>
+        <button onClick={addCard} className="absolute right-2 top-1/2 -translate-y-1/2">＋</button>
       </div>
       <div className="p-2 grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {cards.map(c => (
           <ChartCard
             key={c.id}
             card={c}
-            onRemove={id => setCards(p => p.filter(c => c.id !== id))}
-            onUpdate={update}
-            data={chartData[c.id] ?? { x: [], y: [] }}
+            onRemove={removeCard}
+            onUpdate={updateCardAxis}
+            data={chartData[c.id] ?? EMPTY_SERIES}
             xLabel={chartData[c.id]?.xLabel ?? c.x}
             yLabel={chartData[c.id]?.yLabel ?? c.y}
+            webglEnabled={webglEnabled}
           />
         ))}
       </div>

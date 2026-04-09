@@ -4,26 +4,43 @@ import { fetchWithTimeout, storage, CHART_INTERVAL } from './utils';
 const useImage = (url: string, enabled: boolean) => {
   const [state, setState] = useState<{ img: string | null; err: boolean }>({ img: null, err: false });
   const prevUrl = useRef<string | null>(null);
+  const prevEtag = useRef<string | null>(null);
+  const inFlight = useRef(false);
 
   useEffect(() => {
     if (!enabled) return;
-    let mounted = true;
+    let active = true;
     const load = async () => {
+      if (!active || inFlight.current) return;
+      inFlight.current = true;
       try {
         const res = await fetchWithTimeout(url);
-        if (!mounted || !res.ok) throw Error();
+        if (!active || !res.ok) throw Error();
+
+        const etag = res.headers.get('etag');
+        if (etag && etag === prevEtag.current) {
+          setState(prev => (prev.err ? { ...prev, err: false } : prev));
+          return;
+        }
+
         const blob = await res.blob();
         const nextUrl = URL.createObjectURL(blob);
         if (prevUrl.current) URL.revokeObjectURL(prevUrl.current);
         prevUrl.current = nextUrl;
+        prevEtag.current = etag;
         setState({ img: nextUrl, err: false });
       } catch {
-        setState(s => ({ ...s, err: true }));
+        setState(prev => (prev.err ? prev : { ...prev, err: true }));
+      } finally {
+        inFlight.current = false;
       }
     };
     load();
     const id = setInterval(load, CHART_INTERVAL);
-    return () => { mounted = false; clearInterval(id); };
+    return () => {
+      active = false;
+      clearInterval(id);
+    };
   }, [url, enabled]);
 
   useEffect(() => () => { if (prevUrl.current) URL.revokeObjectURL(prevUrl.current); }, []);

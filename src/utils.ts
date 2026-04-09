@@ -1,9 +1,9 @@
 export const [TIMEOUT_MS, CHART_INTERVAL, POLL_INTERVAL] = [5000, 2000, 200];
 
-export const fetchWithTimeout = (url: string, timeout = TIMEOUT_MS) => {
+export const fetchWithTimeout = (url: string, timeout = TIMEOUT_MS, init?: RequestInit) => {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeout);
-  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+  return fetch(url, { ...init, signal: ctrl.signal }).finally(() => clearTimeout(id));
 };
 
 const setCookie = (name: string, value: string, days = 365) => {
@@ -16,7 +16,9 @@ const setCookie = (name: string, value: string, days = 365) => {
 
 const getCookie = (name: string) => {
   try {
-    return document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))?.[1] ? decodeURIComponent(RegExp.$1) : null;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
+    return match?.[1] ? decodeURIComponent(match[1]) : null;
   } catch {
     return null;
   }
