@@ -13,9 +13,13 @@ export default defineConfig({
     assetsInlineLimit: 0,
     rollupOptions: {
       output: {
-        manualChunks: {
-          react: ['react', 'react-dom'],
-          plotly: ['plotly.js-basic-dist-min', 'react-plotly.js']
+        manualChunks(id) {
+          if (id.includes('react-plotly.js') || id.includes('plotly.js-cartesian-dist-min')) {
+            return 'plotly';
+          }
+          if (id.includes('react-dom') || id.includes('react')) {
+            return 'react';
+          }
         }
       }
     }
