@@ -1,8 +1,3 @@
-declare module 'plotly.js-cartesian-dist-min' {
-  const Plotly: unknown;
-  export default Plotly;
-}
-
 declare module 'react-plotly.js/factory' {
   import { ComponentType } from 'react';
   import { Data, Layout, Config } from 'plotly.js';

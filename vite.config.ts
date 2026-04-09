@@ -6,7 +6,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     minify: 'esbuild',
-    target: 'es2020',
+    target: 'esnext',
+    modulePreload: false,
     cssCodeSplit: true,
     cssMinify: true,
     sourcemap: false,
@@ -14,7 +15,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('react-plotly.js') || id.includes('plotly.js-cartesian-dist-min')) {
+          if (id.includes('react-plotly.js') || id.includes('plotly.js/lib/')) {
             return 'plotly';
           }
           if (id.includes('react-dom') || id.includes('react')) {
