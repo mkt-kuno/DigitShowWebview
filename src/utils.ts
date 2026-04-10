@@ -1,4 +1,5 @@
 export const [TIMEOUT_MS, CHART_INTERVAL, POLL_INTERVAL] = [5000, 2000, 200];
+export const PLOTLY_INTERVAL = 500;
 
 export const fetchWithTimeout = (url: string, timeout = TIMEOUT_MS, init?: RequestInit) => {
   const ctrl = new AbortController();
