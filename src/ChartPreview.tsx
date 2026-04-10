@@ -1,6 +1,6 @@
 import { memo, Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Data, Layout } from 'plotly.js';
-import { fetchWithTimeout, generateId, CHART_INTERVAL } from './utils';
+import { fetchWithTimeout, generateId, PLOTLY_INTERVAL } from './utils';
 
 const Plot = lazy(() => import('./Plot'));
 
@@ -215,7 +215,7 @@ export const ChartPreviewArea = () => {
       }
     };
     update();
-    const id = setInterval(update, CHART_INTERVAL);
+    const id = setInterval(update, PLOTLY_INTERVAL);
     return () => {
       active = false;
       clearInterval(id);
