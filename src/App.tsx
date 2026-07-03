@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { DataGroup } from './DataDisplay';
-import { ChartImages } from './ChartImages';
 import { ChartPreviewArea } from './ChartPreview';
 import { fetchWithTimeout, POLL_INTERVAL } from './utils';
 import { version } from '../package.json';
@@ -166,7 +165,6 @@ export default function App() {
             ? <DataGroup key={key} title={title} data={groups[key] as Record<string, { label?: string; value: unknown }>} categoryKey={key} />
             : null
         )}
-        <ChartImages />
         <ChartPreviewArea />
       </div>
     </div>
