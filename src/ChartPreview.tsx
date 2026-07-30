@@ -62,9 +62,9 @@ const sameSeries = (a: ChartSeries | undefined, b: ChartSeries | undefined) => {
     && sameNullableNumberArray(a.y, b.y);
 };
 
-const Select = memo(({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+const Select = memo(({ value, onChange, axis }: { value: string; onChange: (v: string) => void; axis: 'x' | 'y' }) => (
   <select value={value} onChange={e => onChange(e.target.value)} className="text-black bg-white rounded px-2 py-1">
-    {fields.map(f => <option key={f} value={f}>{f.replace(/^param_/, 'par_')}</option>)}
+    {fields.filter(f => axis === 'x' || f !== 'time').map(f => <option key={f} value={f}>{f.replace(/^param_/, 'par_')}</option>)}
   </select>
 ));
 
@@ -99,8 +99,8 @@ const ChartCard = memo(({ card, onRemove, onUpdate, data, xLabel, yLabel, webglE
   return (
     <div className="border border-white/10 rounded p-2">
       <div className="flex items-center gap-2 mb-2">
-        <label className="flex items-center gap-2">X:<Select value={card.x} onChange={v => onUpdate(card.id, 'x', v)} /></label>
-        <label className="flex items-center gap-2">Y:<Select value={card.y} onChange={v => onUpdate(card.id, 'y', v)} /></label>
+        <label className="flex items-center gap-2">X:<Select axis="x" value={card.x} onChange={v => onUpdate(card.id, 'x', v)} /></label>
+        <label className="flex items-center gap-2">Y:<Select axis="y" value={card.y} onChange={v => onUpdate(card.id, 'y', v)} /></label>
         <button onClick={() => onRemove(card.id)} className="ml-auto">✕</button>
       </div>
       <div className="bg-white rounded aspect-[4/3]">
