@@ -64,7 +64,7 @@ const sameSeries = (a: ChartSeries | undefined, b: ChartSeries | undefined) => {
 
 const Select = memo(({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
   <select value={value} onChange={e => onChange(e.target.value)} className="text-black bg-white rounded px-2 py-1">
-    {fields.map(f => <option key={f} value={f}>{f}</option>)}
+    {fields.map(f => <option key={f} value={f}>{f.replace(/^param_/, 'par_')}</option>)}
   </select>
 ));
 
