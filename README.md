@@ -1,73 +1,44 @@
-# React + TypeScript + Vite
+# DigitShowWebview
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ブラウザで DigitShow の計測値を確認できる Web ビューアです。
 
-Currently, two official plugins are available:
+## 使い方
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Releases ページから最新の `www.zip` をダウンロードし、解凍した内容を任意の Web サーバーに配置してください。
 
-## React Compiler
+`www/` 配下を配信すると、ブラウザからアクセスするだけで以下が確認できます:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- 現在の Raw / Physical / Parameter / Voltage 値
+- X 軸・Y 軸を選択してのチャート表示
+- 起動している GPU が WebGL 対応の場合は scattergl で描画
 
-## Expanding the ESLint configuration
+データは `GET /v1/` および `GET /v1/preview?param=...` を定期的にポーリングして取得します。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 開発
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 必要環境
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- [Bun](https://bun.sh)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### コマンド
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+| コマンド | 内容 |
+| --- | --- |
+| `bun install` | 依存関係のインストール |
+| `bun run dev` | 開発サーバ起動 (HMR) |
+| `bun run build` | 型チェック + 本番ビルド + gzip 成果物生成 |
+| `bun run lint` | ESLint 実行 |
+| `bun run preview` | ビルド結果のローカル確認 |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### ビルド成果物
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+`bun run build` を実行すると `dist/` に静的ファイルが生成されます。`dist/assets/*.gz` も同時に出力されるため、`Content-Encoding: gzip` を返せるサーバー (cpp-httplib など) ではそのまま利用可能です。
+
+## リリース
+
+タグを push すると GitHub Actions (`.github/workflows/release-www.yml`) が `dist/` を `www.zip` にパッケージ化し、GitHub Release へ自動添付します。
+
+```sh
+git tag v1.2.3
+git push origin v1.2.3
 ```
