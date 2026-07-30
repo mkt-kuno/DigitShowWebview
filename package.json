@@ -1,7 +1,7 @@
 {
   "name": "digitshowwebview",
   "private": true,
-  "version": "5.0.0",
+  "version": "5.0.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,25 +12,25 @@
   },
   "dependencies": {
     "@types/plotly.js": "^3.0.10",
-    "plotly.js-cartesian-dist-min": "^3.5.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
+    "plotly.js-cartesian-dist-min": "^3.7.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "react-plotly.js": "^2.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@tailwindcss/postcss": "^4.2.2",
-    "@types/node": "^25.5.2",
-    "@types/react": "^19.2.14",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^25.9.5",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "esbuild": "^0.28.0",
-    "eslint": "^10.2.0",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "globals": "^17.4.0",
-    "typescript": "~6.0.2",
-    "typescript-eslint": "^8.58.1",
-    "vite": "^8.0.7"
+    "@vitejs/plugin-react": "^6.0.5",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.8.0",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^8.1.5"
   }
 }
