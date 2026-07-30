@@ -158,7 +158,7 @@ export default function App() {
       <div className="absolute top-2 right-2 text-base opacity-50 hover:opacity-100">
         <a href="https://github.com/mkt-kuno/DigitShowWebview/releases">v{version}</a>
       </div>
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         <h1 className="text-2xl font-bold text-center mb-2">DigitShowWebview</h1>
         {data && categories.map(({ key, title }) =>
           (groups[key] && Object.keys(groups[key]).length > 0)

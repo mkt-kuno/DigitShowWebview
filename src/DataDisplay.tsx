@@ -14,7 +14,7 @@ const formatValue = (key: string, v: unknown) => {
 };
 
 const DataItem = ({ label, value }: { label: string; value: ReturnType<typeof formatValue> }) => (
-  <div className="border border-white/40 rounded p-1 min-w-[130px]">
+  <div className="border border-white/40 rounded p-1 min-w-0">
     <div className="text-xs opacity-75">{label}</div>
     <div className={`text-xl font-bold text-right ${value.invalid ? 'text-red-500' : ''}`}>{value.text}</div>
   </div>
@@ -43,7 +43,7 @@ export const DataGroup = ({ title, data, categoryKey }: { title: string; data: R
       </div>
       {open && (
         <div className="p-2">
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-1">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 xl:grid-cols-8 gap-1">
             {entries.map(({ id, label, value }) => <MemoDataItem key={id} label={label} value={value} />)}
           </div>
         </div>

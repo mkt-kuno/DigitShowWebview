@@ -241,7 +241,7 @@ export const ChartPreviewArea = () => {
         <span className="ml-3 text-xs font-normal opacity-80">{webglEnabled ? 'GPU: WebGL enabled' : 'GPU: fallback (scatter)'}</span>
         <button onClick={addCard} className="absolute right-2 top-1/2 -translate-y-1/2">＋</button>
       </div>
-      <div className="p-2 grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      <div className="p-2 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {cards.map(c => (
           <ChartCard
             key={c.id}
