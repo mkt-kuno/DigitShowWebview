@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo, useState } from 'react';
 import { storage } from './utils';
 
-const guardedKeys = new Set(['phy', 'param']);
+const guardedKeys = new Set(['phy', 'par']);
 
 const formatValue = (key: string, v: unknown) => {
   const needsGuard = guardedKeys.has(key);

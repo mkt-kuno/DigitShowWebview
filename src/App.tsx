@@ -7,8 +7,8 @@ import { version } from '../package.json';
 const categories = [
   { key: "raw", title: "Raw Value (int16_t −32768 to +32767)" },
   { key: "phy", title: "Physical Value" },
-  { key: "param", title: "Parameter" },
-  { key: "output", title: "Voltage Output" }
+  { key: "par", title: "Parameter" },
+  { key: "out", title: "Voltage Output" }
 ] as const;
 
 type RootData = Record<string, unknown>;
@@ -20,8 +20,8 @@ const isObject = (value: unknown): value is RootData => typeof value === 'object
 const CATEGORY_ALIASES: Record<(typeof categories)[number]['key'], string[]> = {
   raw: ['raw', 'Raw'],
   phy: ['phy', 'Phy', 'physical', 'Physical'],
-  param: ['param', 'Param', 'parameter', 'Parameter'],
-  output: ['output', 'Output', 'voltage', 'Voltage']
+  par: ['par', 'Par', 'parameter', 'Parameter'],
+  out: ['out', 'Out', 'voltage', 'Voltage']
 };
 
 const toDataItem = (value: unknown): DataItem => {

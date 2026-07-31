@@ -4,7 +4,7 @@ import { fetchWithTimeout, generateId, PLOTLY_INTERVAL } from './utils';
 
 const Plot = lazy(() => import('./Plot'));
 
-const fields = ['time', ...[16, 16, 32].flatMap((n, t) => Array.from({ length: n }, (_, i) => `${['raw', 'phy', 'param'][t]}_${i.toString().padStart(2, '0')}`))];
+const fields = ['time', ...[16, 16, 32].flatMap((n, t) => Array.from({ length: n }, (_, i) => `${['raw', 'phy', 'par'][t]}_${i.toString().padStart(2, '0')}`))];
 
 type Card = { id: string; x: string; y: string };
 type ChartSeries = { x: number[]; y: (number | null)[]; xLabel: string; yLabel: string };
@@ -64,7 +64,7 @@ const sameSeries = (a: ChartSeries | undefined, b: ChartSeries | undefined) => {
 
 const Select = memo(({ value, onChange, axis }: { value: string; onChange: (v: string) => void; axis: 'x' | 'y' }) => (
   <select value={value} onChange={e => onChange(e.target.value)} className="text-black bg-white rounded px-2 py-1">
-    {fields.filter(f => axis === 'x' || f !== 'time').map(f => <option key={f} value={f}>{f.replace(/^param_/, 'par_')}</option>)}
+    {fields.filter(f => axis === 'x' || f !== 'time').map(f => <option key={f} value={f}>{f}</option>)}
   </select>
 ));
 
