@@ -42,3 +42,7 @@ Releases ページから最新の `www.zip` をダウンロードし、解凍し
 git tag v1.2.3
 git push origin v1.2.3
 ```
+
+## ライセンス
+
+このプロジェクトは GNU Lesser General Public License v3.0 のもとで提供されています。詳細は `LICENSE` を参照してください。
