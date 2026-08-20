@@ -24,64 +24,93 @@ const num = (v: unknown): number => {
   return 0;
 };
 
+/** Recursively extract a finite number from a value. */
+function unwrapValue(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const parsed = Number(v);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    const obj = v as Record<string, unknown>;
+    if ('value' in obj) return unwrapValue(obj.value);
+  }
+  return NaN;
+}
+
+
 /**
  * Normalize the /v1/ response into our ApiData shape.
- * Handles multiple common backend formats:
- *   1. { raw: { "00": ..., "01": ... }, phy: {...}, ... }      (padded string keys)
- *   2. { raw: { 0: ..., 1: ... }, ... }                       (numeric keys)
- *   3. { raw: [-123, 0, ...], ... }                            (array form)
- *   4. { raw_00: ..., raw_01: ..., phy_00: ..., ... }          (flat prefix-suffix)
- *   5. { values: { raw: {...}, ... } } or { data: { raw: {...}, ... } }  (wrapped)
+ *
+ * The DigitShowModbus backend returns each channel as a { label, value } object:
+ *   { raw: { "00": { label: "00:LoadCell(i16)", value: -28.8671875 }, ... }, ... }
+ * Other shapes (flat { raw_00: -28 }, array { raw: [-28, ...] }) are also handled.
  */
 function normalizeV1(raw: unknown): ApiData {
   const empty: ApiData = { raw: {}, phy: {}, par: {}, out: {}, label: {} };
   if (!raw || typeof raw !== 'object') return empty;
 
-  let obj = raw as Record<string, unknown>;
-  if (obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) {
-    obj = obj.data as Record<string, unknown>;
-  } else if (obj.values && typeof obj.values === 'object' && !Array.isArray(obj.values)) {
-    obj = obj.values as Record<string, unknown>;
-  }
+  const obj = raw as Record<string, unknown>;
 
-  const label: Record<string, string> = {};
-  const labelSource = (obj.label ?? obj.labels) as Record<string, unknown> | undefined;
-  if (labelSource && typeof labelSource === 'object') {
-    for (const [k, v] of Object.entries(labelSource)) {
-      if (typeof v === 'string') label[k] = v;
-    }
-  }
-
-  const pickChannelMap = (source: unknown, prefix?: string): Record<string, number> => {
+  // Extract a channel map from one of the four known fields.
+  const pickFromField = (source: unknown): Record<string, number> => {
     const result: Record<string, number> = {};
     if (Array.isArray(source)) {
       source.forEach((v, i) => {
-        const n = typeof v === 'number' ? v : Number(v);
+        const n = unwrapValue(v);
         if (Number.isFinite(n)) result[pad(i)] = n;
       });
     } else if (source && typeof source === 'object') {
       for (const [k, v] of Object.entries(source as Record<string, unknown>)) {
-        if (prefix && !k.toLowerCase().startsWith(prefix)) continue;
-        const m = k.match(/^(?:raw|phy|par|out)[_-]?(\d+)$/i) || k.match(/^(\d+)$/);
-        const idx = m ? Number(m[1]) : -1;
-        if (idx < 0) continue;
-        const n = typeof v === 'number' ? v : Number(v);
-        if (Number.isFinite(n)) result[pad(idx)] = n;
+        const m = k.match(/^(\d+)$/);
+        if (!m) continue;
+        const n = unwrapValue(v);
+        if (Number.isFinite(n)) result[pad(Number(m[1]))] = n;
       }
     }
     return result;
   };
 
-  const rawMap = pickChannelMap(obj.raw);
-  const phyMap = pickChannelMap(obj.phy);
-  const parMap = pickChannelMap(obj.par);
-  const outMap = pickChannelMap(obj.out);
+  // Extract labels from inner { label, value } objects (keys: prefix_NN).
+  const pickLabelsFromField = (source: unknown, prefix: string): Record<string, string> => {
+    const result: Record<string, string> = {};
+    if (source && typeof source === 'object' && !Array.isArray(source)) {
+      for (const [k, v] of Object.entries(source as Record<string, unknown>)) {
+        if (v && typeof v === 'object' && 'label' in v) {
+          const lbl = (v as { label: unknown }).label;
+          if (typeof lbl === 'string' && lbl.length > 0) {
+            result[`${prefix}${k}`] = lbl;
+          }
+        }
+      }
+    }
+    return result;
+  };
+
+  const rawMap = pickFromField(obj.raw);
+  const phyMap = pickFromField(obj.phy);
+  const parMap = pickFromField(obj.par);
+  const outMap = pickFromField(obj.out);
+
+  // Build label map: prefer top-level `label` field if present.
+  const label: Record<string, string> = {};
+  const flat = (obj.label ?? obj.labels) as Record<string, unknown> | undefined;
+  if (flat && typeof flat === 'object') {
+    for (const [k, v] of Object.entries(flat)) {
+      if (typeof v === 'string') label[k] = v;
+    }
+  }
+  // Backfill from inner { label, value } wrappers.
+  Object.assign(label, pickLabelsFromField(obj.raw, 'raw_'));
+  Object.assign(label, pickLabelsFromField(obj.phy, 'phy_'));
+  Object.assign(label, pickLabelsFromField(obj.par, 'par_'));
+  Object.assign(label, pickLabelsFromField(obj.out, 'out_'));
 
   return {
-    raw: Object.keys(rawMap).length > 0 ? rawMap : pickChannelMap(obj, 'raw_'),
-    phy: Object.keys(phyMap).length > 0 ? phyMap : pickChannelMap(obj, 'phy_'),
-    par: Object.keys(parMap).length > 0 ? parMap : pickChannelMap(obj, 'par_'),
-    out: Object.keys(outMap).length > 0 ? outMap : pickChannelMap(obj, 'out_'),
+    raw: rawMap,
+    phy: phyMap,
+    par: parMap,
+    out: outMap,
     label,
   };
 }
@@ -204,7 +233,6 @@ export default function App() {
         const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/'));
         if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
         const dataJson = await dataRes.json();
-        console.log('[DSW] /v1/ response shape:', dataJson);
         if (!cancelled) {
           setData(normalizeV1(dataJson));
         }
@@ -214,7 +242,6 @@ export default function App() {
         const previewRes = await fetchWithTimeout(previewUrl);
         if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
         const previewJson = await previewRes.json();
-        console.log('[DSW] /v1/preview response shape:', previewJson);
         if (!cancelled) {
           setPreview({ data: normalizePreview(previewJson) });
         }
