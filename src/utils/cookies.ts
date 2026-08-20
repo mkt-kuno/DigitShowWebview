@@ -1,0 +1,140 @@
+const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
+
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+const isBrowser = typeof window !== 'undefined';
+
+// App-scoped prefix. modbus_extra_logger is a separate app from the same
+// lineage, so on any origin both can reach (the same loopback port, the same
+// dev port, one deployment host) an unscoped key means one app's labels,
+// calibration and script contents silently overwrite the other's.
+// No migration from the old unscoped `modbus_logger_` keys: reading them back
+// here is exactly the sharing this prefix exists to end, since those keys may
+// just as well have been written by modbus_extra_logger.
+const KEY_PREFIX = 'modbus_simple_logger_';
+
+function getKey(key: string): string {
+  return `${KEY_PREFIX}${key}`;
+}
+
+// Reads the bare-key cookie that writeCookieFallback() below parks values in.
+// No migration and no delete: the caller may be a plain read on a machine where
+// localStorage still throws, and deleting would destroy the only copy.
+function readCookieRaw(key: string): string | null {
+  try {
+    const entry = document.cookie
+      .split('; ')
+      .find((candidate) => candidate.startsWith(`${key}=`));
+    if (!entry) return null;
+    return decodeURIComponent(entry.substring(key.length + 1));
+  } catch {
+    return null;
+  }
+}
+
+function parseJson<T extends JsonValue>(raw: string): T | null {
+  try {
+    return JSON.parse(raw) as T;
+  } catch (err) {
+    console.warn('Failed to parse stored value', err);
+    return null;
+  }
+}
+
+export const readJsonStorage = <T extends JsonValue>(key: string): T | null => {
+  if (!isBrowser) return null;
+  try {
+    const raw = localStorage.getItem(getKey(key));
+    if (raw !== null) return parseJson<T>(raw);
+  } catch (err) {
+    console.warn('Failed to read localStorage item', err);
+  }
+  // The cookie lifeboat. This read used to be missing, which made the fallback
+  // write-only: writeRaw() parks a value in a cookie when localStorage throws,
+  // but every caller that reads through this function looked only at
+  // localStorage — so UI scale, the ScriptRunner code and its backup, and the
+  // collapsed-section flags were all lost on reload in exactly the situation
+  // the fallback exists for (a browser with site data blocked for the origin,
+  // or Safari private mode at its quota).
+  const cookie = readCookieRaw(key);
+  return cookie === null ? null : parseJson<T>(cookie);
+};
+
+// Where a write actually landed. The read path needs this: it may only delete a
+// legacy cookie once the value is safely somewhere else.
+type WriteResult = 'storage' | 'cookie' | 'failed';
+
+// A cookie carrying more than this is not worth writing: cookies go out on
+// every request to the launcher's own HTTP server, and browsers cap them at
+// ~4 KB anyway (a silently truncated setting is worse than an unsaved one).
+const COOKIE_FALLBACK_MAX_BYTES = 3500;
+
+// Written under the bare key — the same name the migration reader below looks
+// for, so a value parked here is picked up again as soon as localStorage works.
+function writeCookieFallback(key: string, serialized: string): boolean {
+  const encoded = encodeURIComponent(serialized);
+  if (encoded.length > COOKIE_FALLBACK_MAX_BYTES) return false;
+  try {
+    document.cookie = `${key}=${encoded}; max-age=${ONE_YEAR_SECONDS}; path=/; SameSite=Lax`;
+    // Read back: with site data blocked the assignment above is silently
+    // ignored, and the caller has to know the value went nowhere.
+    return document.cookie.split('; ').some((entry) => entry.startsWith(`${key}=`));
+  } catch {
+    return false;
+  }
+}
+
+// localStorage is the store; the cookie is only a lifeboat for the case where
+// it throws — Safari private mode at its quota, or a browser configured to
+// block site data for the origin. Not a mirror: writing both every time would
+// put the calibration blob on the wire with every asset request.
+function writeRaw(key: string, value: JsonValue): WriteResult {
+  const serialized = JSON.stringify(value);
+  try {
+    localStorage.setItem(getKey(key), serialized);
+    return 'storage';
+  } catch (err) {
+    console.warn('Failed to write localStorage item, falling back to a cookie', err);
+  }
+  return writeCookieFallback(key, serialized) ? 'cookie' : 'failed';
+}
+
+// Single chokepoint for every persisted setting.
+export const writeJsonStorage = (key: string, value: JsonValue): WriteResult => {
+  if (!isBrowser) return 'failed';
+  return writeRaw(key, value);
+};
+
+// Settings that describe how THIS screen looks — theme, UI scale — rather than
+// what the logger is measuring.
+export const writeLocalPreference = (key: string, value: JsonValue): WriteResult => {
+  if (!isBrowser) return 'failed';
+  return writeRaw(key, value);
+};
+
+/**
+ * Like readJsonStorage(), plus the one-way migration of a legacy cookie into
+ * localStorage. Both functions read cookies now — the difference is only that
+ * this one tries to promote and retire the cookie afterwards.
+ */
+export const readJsonCookie = <T extends JsonValue>(key: string): T | null => {
+  if (!isBrowser) return null;
+
+  const value = readJsonStorage<T>(key);
+  if (value === null) return null;
+
+  // Nothing to migrate when localStorage already holds it.
+  if (readCookieRaw(key) === null) return value;
+
+  // Clear the cookie only once the value is actually in localStorage. The write
+  // falls back to this very cookie when localStorage is unavailable — deleting
+  // unconditionally, as this used to, threw the setting away in that case.
+  if (writeJsonStorage(key, value) === 'storage') {
+    document.cookie = `${key}=; max-age=0; path=/`;
+  }
+  return value;
+};
+
+export const writeJsonCookie = (key: string, value: JsonValue): void => {
+  writeJsonStorage(key, value);
+};
