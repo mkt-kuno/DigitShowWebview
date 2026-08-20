@@ -24,93 +24,68 @@ const num = (v: unknown): number => {
   return 0;
 };
 
-/** Recursively extract a finite number from a value. */
-function unwrapValue(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string') {
-    const parsed = Number(v);
-    if (Number.isFinite(parsed)) return parsed;
-  }
-  if (v && typeof v === 'object' && !Array.isArray(v)) {
-    const obj = v as Record<string, unknown>;
-    if ('value' in obj) return unwrapValue(obj.value);
-  }
-  return NaN;
-}
-
-
 /**
  * Normalize the /v1/ response into our ApiData shape.
  *
  * The DigitShowModbus backend returns each channel as a { label, value } object:
  *   { raw: { "00": { label: "00:LoadCell(i16)", value: -28.8671875 }, ... }, ... }
- * Other shapes (flat { raw_00: -28 }, array { raw: [-28, ...] }) are also handled.
+ *
+ * One `as` cast, one extraction loop per field. No recursive unwrapping.
  */
 function normalizeV1(raw: unknown): ApiData {
-  const empty: ApiData = { raw: {}, phy: {}, par: {}, out: {}, label: {} };
-  if (!raw || typeof raw !== 'object') return empty;
+  if (!raw || typeof raw !== 'object') {
+    return { raw: {}, phy: {}, par: {}, out: {}, label: {} };
+  }
 
-  const obj = raw as Record<string, unknown>;
+  // One cast to the expected backend shape.
+  type BackendChannel = { value: number | string | null; label?: string };
+  type BackendV1 = {
+    raw?: Record<string, BackendChannel>;
+    phy?: Record<string, BackendChannel>;
+    par?: Record<string, BackendChannel>;
+    out?: Record<string, BackendChannel>;
+    label?: Record<string, string>;
+  };
+  const v = raw as BackendV1;
 
-  // Extract a channel map from one of the four known fields.
-  const pickFromField = (source: unknown): Record<string, number> => {
-    const result: Record<string, number> = {};
-    if (Array.isArray(source)) {
-      source.forEach((v, i) => {
-        const n = unwrapValue(v);
-        if (Number.isFinite(n)) result[pad(i)] = n;
-      });
-    } else if (source && typeof source === 'object') {
-      for (const [k, v] of Object.entries(source as Record<string, unknown>)) {
-        const m = k.match(/^(\d+)$/);
-        if (!m) continue;
-        const n = unwrapValue(v);
-        if (Number.isFinite(n)) result[pad(Number(m[1]))] = n;
+  // One extractor shared by all four fields.
+  const extract = (map: BackendV1['raw']) => {
+    const values: Record<string, number> = {};
+    const labels: Record<string, string> = {};
+    if (!map) return { values, labels };
+    for (const [k, ch] of Object.entries(map)) {
+      const num = typeof ch.value === 'number' ? ch.value : Number(ch.value);
+      if (Number.isFinite(num)) values[k] = num;
+      if (typeof ch.label === 'string' && ch.label.length > 0) {
+        labels[k] = ch.label;
       }
     }
-    return result;
+    return { values, labels };
   };
 
-  // Extract labels from inner { label, value } objects (keys: prefix_NN).
-  const pickLabelsFromField = (source: unknown, prefix: string): Record<string, string> => {
-    const result: Record<string, string> = {};
-    if (source && typeof source === 'object' && !Array.isArray(source)) {
-      for (const [k, v] of Object.entries(source as Record<string, unknown>)) {
-        if (v && typeof v === 'object' && 'label' in v) {
-          const lbl = (v as { label: unknown }).label;
-          if (typeof lbl === 'string' && lbl.length > 0) {
-            result[`${prefix}${k}`] = lbl;
-          }
-        }
-      }
-    }
-    return result;
-  };
+  const rawF = extract(v.raw);
+  const phyF = extract(v.phy);
+  const parF = extract(v.par);
+  const outF = extract(v.out);
 
-  const rawMap = pickFromField(obj.raw);
-  const phyMap = pickFromField(obj.phy);
-  const parMap = pickFromField(obj.par);
-  const outMap = pickFromField(obj.out);
-
-  // Build label map: prefer top-level `label` field if present.
+  // Build the combined label map keyed by `prefix_NN`.
   const label: Record<string, string> = {};
-  const flat = (obj.label ?? obj.labels) as Record<string, unknown> | undefined;
-  if (flat && typeof flat === 'object') {
-    for (const [k, v] of Object.entries(flat)) {
-      if (typeof v === 'string') label[k] = v;
+  for (const [k, l] of Object.entries(rawF.labels)) label[`raw_${k}`] = l;
+  for (const [k, l] of Object.entries(phyF.labels)) label[`phy_${k}`] = l;
+  for (const [k, l] of Object.entries(parF.labels)) label[`par_${k}`] = l;
+  for (const [k, l] of Object.entries(outF.labels)) label[`out_${k}`] = l;
+  // Backfill from top-level `label` field if present (preserves earlier behaviour).
+  if (v.label && typeof v.label === 'object') {
+    for (const [k, val] of Object.entries(v.label)) {
+      if (typeof val === 'string') label[k] = val;
     }
   }
-  // Backfill from inner { label, value } wrappers.
-  Object.assign(label, pickLabelsFromField(obj.raw, 'raw_'));
-  Object.assign(label, pickLabelsFromField(obj.phy, 'phy_'));
-  Object.assign(label, pickLabelsFromField(obj.par, 'par_'));
-  Object.assign(label, pickLabelsFromField(obj.out, 'out_'));
 
   return {
-    raw: rawMap,
-    phy: phyMap,
-    par: parMap,
-    out: outMap,
+    raw: rawF.values,
+    phy: phyF.values,
+    par: parF.values,
+    out: outF.values,
     label,
   };
 }
