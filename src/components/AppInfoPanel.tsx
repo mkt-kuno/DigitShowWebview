@@ -42,7 +42,7 @@ export function AppInfoPanel({
               <dt className="text-slate-500 dark:text-slate-400">Author</dt>
               <dd>
                 <a
-                  href="https://github.com/KikuchiMakoto"
+                  href="https://github.com/mkt-kuno"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-600 hover:underline dark:text-emerald-400"
@@ -59,7 +59,7 @@ export function AppInfoPanel({
               <dt className="text-slate-500 dark:text-slate-400">Repository</dt>
               <dd>
                 <a
-                  href="https://github.com/KikuchiMakoto/DigitShowWebview"
+                  href="https://github.com/mkt-kuno/DigitShowWebview"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-600 hover:underline dark:text-emerald-400"
