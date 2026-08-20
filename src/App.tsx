@@ -92,24 +92,15 @@ export default function App() {
     axes.chart4X, axes.chart4Y,
   ]);
 
+  const lastPollFailedRef = useRef(false);
+
   useEffect(() => {
     if (!connected) return;
     let cancelled = false;
     const poll = async () => {
       const cycleStart = Date.now();
       try {
-        // 1. Heartbeat
-        const hbRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/health'));
-        if (!hbRes.ok) throw new Error(`health HTTP ${hbRes.status}`);
-        const hbJson = (await hbRes.json()) as Partial<Heartbeat>;
-        if (!cancelled) {
-          setHeartbeat({
-            running: typeof hbJson.running === 'boolean' ? hbJson.running : false,
-            info: typeof hbJson.info === 'string' ? hbJson.info : '',
-          });
-        }
-
-        // 2. /v1/
+        // 1. /v1/
         const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/'));
         if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
         const dataJson = (await dataRes.json()) as Partial<ApiData>;
@@ -123,7 +114,7 @@ export default function App() {
           });
         }
 
-        // 3. /v1/preview (with the union of all chart axes as query params)
+        // 2. /v1/preview (with the union of all chart axes as query params)
         const previewFields = Array.from(selectedPreviewAxes).join('&');
         const previewUrl = `${resolveApiUrl(configRef.current, '/v1/preview')}?${previewFields}`;
         const previewRes = await fetchWithTimeout(previewUrl);
@@ -138,8 +129,17 @@ export default function App() {
         const cycleTime = Date.now() - cycleStart;
         if (!cancelled) setResponseTimeMs(cycleTime);
 
-
+        // Heartbeat derived from polling health (no separate /v1/health call).
+        if (!cancelled) {
+          setHeartbeat({ running: true, info: 'Connected' });
+          lastPollFailedRef.current = false;
+        }
       } catch {
+        // Polling failed -- flag for the recovery probe and show disconnected.
+        if (!cancelled) {
+          lastPollFailedRef.current = true;
+          setHeartbeat({ running: false, info: 'Disconnected' });
+        }
         // keep previous data on transient errors
       }
     };
@@ -147,6 +147,41 @@ export default function App() {
     const id = setInterval(poll, connection.pollIntervalMs);
     return () => { cancelled = true; clearInterval(id); };
   }, [connection, connected, selectedPreviewAxes]);
+
+  // Recovery check: after a polling failure, probe /v1/health once to see if
+  // the backend is reachable. If it succeeds, the next regular poll will
+  // refresh the data; if it fails, we stay disconnected.
+  useEffect(() => {
+    if (!connected) return;
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    const probe = async () => {
+      if (cancelled || !lastPollFailedRef.current) return;
+      try {
+        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/health'));
+        if (cancelled) return;
+        if (res.ok) {
+          setHeartbeat({ running: true, info: 'Connected' });
+          lastPollFailedRef.current = false;
+          return;
+        }
+      } catch {
+        // ignore -- stay disconnected
+      }
+      if (!cancelled) timeoutId = window.setTimeout(probe, 5000);
+    };
+
+    const interval = window.setInterval(() => {
+      if (lastPollFailedRef.current) probe();
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      clearInterval(interval);
+    };
+  }, [connection, connected]);
 
   const handleConnectionSave = useCallback((next: ConnectionConfig) => {
     saveConfig(next);
