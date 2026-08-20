@@ -500,7 +500,7 @@ export default function App() {
           <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-8 xl:grid-cols-8">
             {Array.from({ length: AO_CHANNELS }, (_, idx) => {
               const v = num(data.out[pad(idx)]);
-              const aoMeterHeight = Math.max(2, Math.min(1, Math.abs(v) / 10000) * 100);
+              const aoMeterHeight = Math.max(2, Math.min(1, Math.abs(v) / 10) * 100);
               const aoLabel = getAoLabel(idx);
               return (
               <div
@@ -516,7 +516,7 @@ export default function App() {
                     <div className="flex items-center justify-between leading-none">
                       <span className="shrink-0 text-sm font-medium text-slate-600 dark:text-slate-300 leading-none">V</span>
                       <span className="text-xl font-bold leading-none tabular-nums text-sky-600 dark:text-sky-400">
-                        {(v / 1000).toFixed(3)}
+                        {v.toFixed(3)}
                       </span>
                     </div>
                   </div>
