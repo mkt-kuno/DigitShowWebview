@@ -398,10 +398,10 @@ export default function App() {
                 className="flex flex-wrap items-baseline gap-x-3 gap-y-0 text-[0.7rem] leading-tight text-slate-600 dark:text-slate-400"
               >
                 <span className="tabular-nums">
-                  Total: --:--:-- / # -
+                  Host/IP: {connection.ip}
                 </span>
                 <span className="font-semibold text-slate-700 dark:text-slate-300">
-                  File: -
+                  Port: {connection.port} ({connection.useHttps ? 'HTTPS' : 'HTTP'})
                 </span>
               </div>
             </div>
