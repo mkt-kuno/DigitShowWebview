@@ -49,13 +49,13 @@ function normalizeV1(raw: unknown): ApiData {
   const v = raw as BackendV1;
 
   // One extractor shared by all four fields.
-  const extract = (map: BackendV1['raw']) => {
+  const extract = (map: BackendV1['raw'], round: boolean) => {
     const values: Record<string, number> = {};
     const labels: Record<string, string> = {};
     if (!map) return { values, labels };
     for (const [k, ch] of Object.entries(map)) {
       const num = typeof ch.value === 'number' ? ch.value : Number(ch.value);
-      if (Number.isFinite(num)) values[k] = num;
+      if (Number.isFinite(num)) values[k] = round ? Math.round(num) : num;
       if (typeof ch.label === 'string' && ch.label.length > 0) {
         labels[k] = ch.label;
       }
@@ -63,10 +63,11 @@ function normalizeV1(raw: unknown): ApiData {
     return { values, labels };
   };
 
-  const rawF = extract(v.raw);
-  const phyF = extract(v.phy);
-  const parF = extract(v.par);
-  const outF = extract(v.out);
+  // Raw is int16 register value — round to integer. Phy/Par/Out are floats.
+  const rawF = extract(v.raw, true);
+  const phyF = extract(v.phy, false);
+  const parF = extract(v.par, false);
+  const outF = extract(v.out, false);
 
   // Build the combined label map keyed by `prefix_NN`.
   const label: Record<string, string> = {};
@@ -117,11 +118,14 @@ function normalizePreview(raw: unknown): Record<string, (number | null)[]> {
     }
   }
 
-  for (const [k, v] of Object.entries(flat)) {
+for (const [k, v] of Object.entries(flat)) {
     if (Array.isArray(v)) {
+      const isRaw = k.startsWith('raw_');
       result[k] = v.map((n) => {
         const num = typeof n === 'number' ? n : Number(n);
-        return Number.isFinite(num) ? num : null;
+        if (!Number.isFinite(num)) return null;
+        // Raw is int16 — round to integer; everything else stays float.
+        return isRaw ? Math.round(num) : num;
       });
     }
   }
