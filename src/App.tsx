@@ -557,7 +557,7 @@ export default function App() {
                       title={String(v)}
                       className="min-w-0 truncate text-right text-xl font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400"
                     >
-                      {Number(v.toFixed(5)).toString()}
+                      {v.toFixed(3)}
                     </span>
                   </div>
                 </div>
