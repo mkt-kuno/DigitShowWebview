@@ -71,6 +71,27 @@ export default function App() {
 
   const configRef = useRef(connection);
   configRef.current = connection;
+  const axes = useChartAxes(axisOptionKeys);
+
+  const selectedPreviewAxes = useMemo(() => {
+    const s = new Set<string>();
+    const all = [
+      axes.chart1X, axes.chart1Y,
+      axes.chart2X, axes.chart2Y,
+      axes.chart3X, axes.chart3Y,
+      axes.chart4X, axes.chart4Y,
+    ];
+    for (const a of all) {
+      if (a) s.add(a);
+    }
+    return s;
+  }, [
+    axes.chart1X, axes.chart1Y,
+    axes.chart2X, axes.chart2Y,
+    axes.chart3X, axes.chart3Y,
+    axes.chart4X, axes.chart4Y,
+  ]);
+
   useEffect(() => {
     if (!connected) return;
     let cancelled = false;
@@ -103,7 +124,7 @@ export default function App() {
         }
 
         // 3. /v1/preview (with the union of all chart axes as query params)
-        const previewFields = axisOptions.map((o) => o.key).join('&');
+        const previewFields = Array.from(selectedPreviewAxes).join('&');
         const previewUrl = `${resolveApiUrl(configRef.current, '/v1/preview')}?${previewFields}`;
         const previewRes = await fetchWithTimeout(previewUrl);
         if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
@@ -125,7 +146,7 @@ export default function App() {
     void poll();
     const id = setInterval(poll, connection.pollIntervalMs);
     return () => { cancelled = true; clearInterval(id); };
-  }, [connection, connected]);
+  }, [connection, connected, selectedPreviewAxes]);
 
   const handleConnectionSave = useCallback((next: ConnectionConfig) => {
     saveConfig(next);
@@ -149,7 +170,6 @@ export default function App() {
     else if (item === 'connection') setConnOpen(true);
   }, []);
 
-  const axes = useChartAxes(axisOptionKeys);
 
   const chartDataPoints = useMemo<DataPoint[]>(() => {
     if (!preview || !preview.data) return [];
