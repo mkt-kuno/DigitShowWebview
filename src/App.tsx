@@ -24,6 +24,107 @@ const num = (v: unknown): number => {
   return 0;
 };
 
+/**
+ * Normalize the /v1/ response into our ApiData shape.
+ * Handles multiple common backend formats:
+ *   1. { raw: { "00": ..., "01": ... }, phy: {...}, ... }      (padded string keys)
+ *   2. { raw: { 0: ..., 1: ... }, ... }                       (numeric keys)
+ *   3. { raw: [-123, 0, ...], ... }                            (array form)
+ *   4. { raw_00: ..., raw_01: ..., phy_00: ..., ... }          (flat prefix-suffix)
+ *   5. { values: { raw: {...}, ... } } or { data: { raw: {...}, ... } }  (wrapped)
+ */
+function normalizeV1(raw: unknown): ApiData {
+  const empty: ApiData = { raw: {}, phy: {}, par: {}, out: {}, label: {} };
+  if (!raw || typeof raw !== 'object') return empty;
+
+  let obj = raw as Record<string, unknown>;
+  if (obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) {
+    obj = obj.data as Record<string, unknown>;
+  } else if (obj.values && typeof obj.values === 'object' && !Array.isArray(obj.values)) {
+    obj = obj.values as Record<string, unknown>;
+  }
+
+  const label: Record<string, string> = {};
+  const labelSource = (obj.label ?? obj.labels) as Record<string, unknown> | undefined;
+  if (labelSource && typeof labelSource === 'object') {
+    for (const [k, v] of Object.entries(labelSource)) {
+      if (typeof v === 'string') label[k] = v;
+    }
+  }
+
+  const pickChannelMap = (source: unknown, prefix?: string): Record<string, number> => {
+    const result: Record<string, number> = {};
+    if (Array.isArray(source)) {
+      source.forEach((v, i) => {
+        const n = typeof v === 'number' ? v : Number(v);
+        if (Number.isFinite(n)) result[pad(i)] = n;
+      });
+    } else if (source && typeof source === 'object') {
+      for (const [k, v] of Object.entries(source as Record<string, unknown>)) {
+        if (prefix && !k.toLowerCase().startsWith(prefix)) continue;
+        const m = k.match(/^(?:raw|phy|par|out)[_-]?(\d+)$/i) || k.match(/^(\d+)$/);
+        const idx = m ? Number(m[1]) : -1;
+        if (idx < 0) continue;
+        const n = typeof v === 'number' ? v : Number(v);
+        if (Number.isFinite(n)) result[pad(idx)] = n;
+      }
+    }
+    return result;
+  };
+
+  const rawMap = pickChannelMap(obj.raw);
+  const phyMap = pickChannelMap(obj.phy);
+  const parMap = pickChannelMap(obj.par);
+  const outMap = pickChannelMap(obj.out);
+
+  return {
+    raw: Object.keys(rawMap).length > 0 ? rawMap : pickChannelMap(obj, 'raw_'),
+    phy: Object.keys(phyMap).length > 0 ? phyMap : pickChannelMap(obj, 'phy_'),
+    par: Object.keys(parMap).length > 0 ? parMap : pickChannelMap(obj, 'par_'),
+    out: Object.keys(outMap).length > 0 ? outMap : pickChannelMap(obj, 'out_'),
+    label,
+  };
+}
+
+/**
+ * Normalize the /v1/preview response to { data: Record<string, number[]> }.
+ * Handles:
+ *   1. { data: { time: [...], raw_00: [...], ... } }
+ *   2. { time: [...], raw_00: [...], ... }               (flat)
+ *   3. { raw_00: { data: [...], label: '...' }, ... }     (per-key wrapper)
+ */
+function normalizePreview(raw: unknown): Record<string, (number | null)[]> {
+  const result: Record<string, (number | null)[]> = {};
+  if (!raw || typeof raw !== 'object') return result;
+
+  const obj = raw as Record<string, unknown>;
+  const flat: Record<string, unknown> = {};
+
+  if (obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) {
+    Object.assign(flat, obj.data as Record<string, unknown>);
+  }
+
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === 'data' || k === 'label' || k === 'labels') continue;
+    if (v && typeof v === 'object' && !Array.isArray(v) && 'data' in (v as object)) {
+      flat[k] = (v as { data: unknown }).data;
+    } else if (Array.isArray(v)) {
+      flat[k] = v;
+    }
+  }
+
+  for (const [k, v] of Object.entries(flat)) {
+    if (Array.isArray(v)) {
+      result[k] = v.map((n) => {
+        const num = typeof n === 'number' ? n : Number(n);
+        return Number.isFinite(num) ? num : null;
+      });
+    }
+  }
+
+  return result;
+}
+
 const axisOptions = [
   { key: 'time', label: 'time' },
   ...Array.from({ length: AI_CHANNELS }, (_, idx) => ({
@@ -100,47 +201,36 @@ export default function App() {
     const poll = async () => {
       const cycleStart = Date.now();
       try {
-        // 1. /v1/
         const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/'));
         if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
-        const dataJson = (await dataRes.json()) as Partial<ApiData>;
+        const dataJson = await dataRes.json();
+        console.log('[DSW] /v1/ response shape:', dataJson);
         if (!cancelled) {
-          setData({
-            raw: dataJson.raw ?? {},
-            phy: dataJson.phy ?? {},
-            par: dataJson.par ?? {},
-            out: dataJson.out ?? {},
-            label: dataJson.label ?? {},
-          });
+          setData(normalizeV1(dataJson));
         }
 
-        // 2. /v1/preview (with the union of all chart axes as query params)
         const previewFields = Array.from(selectedPreviewAxes).join('&');
         const previewUrl = `${resolveApiUrl(configRef.current, '/v1/preview')}?${previewFields}`;
         const previewRes = await fetchWithTimeout(previewUrl);
         if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
-        const previewJson = (await previewRes.json()) as Partial<ApiPreview>;
+        const previewJson = await previewRes.json();
+        console.log('[DSW] /v1/preview response shape:', previewJson);
         if (!cancelled) {
-          setPreview({
-            data: previewJson.data ?? {},
-          });
+          setPreview({ data: normalizePreview(previewJson) });
         }
 
         const cycleTime = Date.now() - cycleStart;
         if (!cancelled) setResponseTimeMs(cycleTime);
 
-        // Heartbeat derived from polling health (no separate /v1/health call).
         if (!cancelled) {
           setHeartbeat({ running: true, info: 'Connected' });
           lastPollFailedRef.current = false;
         }
       } catch {
-        // Polling failed -- flag for the recovery probe and show disconnected.
         if (!cancelled) {
           lastPollFailedRef.current = true;
           setHeartbeat({ running: false, info: 'Disconnected' });
         }
-        // keep previous data on transient errors
       }
     };
     void poll();
@@ -148,9 +238,6 @@ export default function App() {
     return () => { cancelled = true; clearInterval(id); };
   }, [connection, connected, selectedPreviewAxes]);
 
-  // Recovery check: after a polling failure, probe /v1/health once to see if
-  // the backend is reachable. If it succeeds, the next regular poll will
-  // refresh the data; if it fails, we stay disconnected.
   useEffect(() => {
     if (!connected) return;
     let cancelled = false;
@@ -167,7 +254,6 @@ export default function App() {
           return;
         }
       } catch {
-        // ignore -- stay disconnected
       }
       if (!cancelled) timeoutId = window.setTimeout(probe, 5000);
     };
@@ -267,11 +353,11 @@ export default function App() {
   const labelSpan = (specLabel: string, title: string, value: string): ReactNode => {
     let display: string;
     if (!connected) {
-      display = specLabel; // before polling: show CH 00
+      display = specLabel;
     } else if (value) {
-      display = value;     // polling, label exists
+      display = value;
     } else {
-      display = 'Label';   // polling, no label
+      display = 'Label';
     }
     return (
       <span
