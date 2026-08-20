@@ -1,8 +1,8 @@
 {
-  "name": "ModbusSimpleLogger",
-  "short_name": "MSL",
-  "id": "modbus-simple-logger",
-  "description": "ModbusRTU WebUSB data logger and visualization tool",
+  "name": "DigitShowWebview",
+  "short_name": "DSW",
+  "id": "digit-show-webview",
+  "description": "HTTPS polling viewer for DigitShowSide / DigitShowModbus",
   "lang": "en",
   "start_url": "./",
   "scope": "./",
@@ -12,9 +12,9 @@
   "orientation": "any",
   "icons": [
     {
-      "src": "./icon.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "src": "./site.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]

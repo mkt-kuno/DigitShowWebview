@@ -3,23 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ModbusSimpleLogger</title>
+    <title>DigitShowWebview</title>
 
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f172a" />
-    <meta name="description" content="Modbus WebUSB data logger and visualization tool" />
+    <meta name="description" content="HTTPS polling viewer for DigitShowSide / DigitShowModbus" />
     <link rel="manifest" href="manifest.json" />
-    <!-- PNG, not SVG: the "SVG" this replaced was a 945x945 PNG wrapped in an
-         <image> element, so there was never any vector artwork to lose — only
-         the 33% base64 overhead of carrying it that way, on an asset the
-         Service Worker precaches and the launcher exe embeds. -->
-    <link rel="icon" type="image/png" href="icon.png" />
+    <link rel="icon" type="image/svg+xml" href="site.svg" />
 
     <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="icon.png" />
+    <link rel="apple-touch-icon" href="site.svg" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Modbus Simple Logger" />
+    <meta name="apple-mobile-web-app-title" content="DSW" />
   </head>
   <body class="bg-slate-950 text-slate-50">
     <div id="root"></div>
