@@ -25,7 +25,7 @@ export function FooterBar({
         </span>
         <span className="flex-1" />
         <span translate="no" className="shrink-0 tabular-nums text-slate-500 dark:text-slate-500">
-          HTTP Response: {responseTimeMs != null ? responseTimeMs.toFixed(1) : '—'}[ms]
+          Response: {responseTimeMs != null ? responseTimeMs.toFixed(1) : '—'}[ms]
         </span>
       </div>
     </>
