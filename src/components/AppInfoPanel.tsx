@@ -17,7 +17,7 @@ const LIBRARIES = [
 ].map((lib) => ({ ...lib, version: DEP_VERSIONS[lib.pkg] ?? 'unknown' }));
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'unknown';
-const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'DigitShowWebview';
+const APP_NAME = 'DigitShowWebview';
 
 export function AppInfoPanel({
   open,

@@ -28,7 +28,6 @@ export default defineConfig(() => ({
   plugins: [react()],
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
-    'import.meta.env.VITE_APP_NAME': JSON.stringify(pkg.name),
     'import.meta.env.VITE_DEP_VERSIONS': JSON.stringify(JSON.stringify(DEP_VERSIONS)),
     global: 'globalThis',
     'process.env.DRAGGABLE_DEBUG': 'false',
