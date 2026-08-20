@@ -1,0 +1,1 @@
+export const isSupportedBrowser = (): boolean => typeof window !== 'undefined';

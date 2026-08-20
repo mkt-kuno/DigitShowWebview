@@ -1,1 +1,337 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Re-map Tailwind's `font-mono` (ScriptRunner editor, API reference <code>,
+   AppInfo / Manual / Mcp monospace spans) onto the same Iosevka stack as the
+   rest of the UI. Without this, .font-mono falls back to the system monospace
+   and the editor looks different from every other surface. */
+@theme {
+  --font-mono: 'Iosevka', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'Noto Sans Mono CJK JP', 'Courier New', monospace;
+}
+
+/* Iosevka (Latin subset) — woff2 only, no woff fallback. Each weight is bundled
+   by Vite (bare `url()` is auto-resolved to a hashed URL under dist/assets/)
+   and fingerprinted for long-term precache. Only the four weights actually
+   used in the app are registered (see main.tsx). */
+@font-face {
+  font-family: 'Iosevka';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url('@fontsource/iosevka/files/iosevka-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Iosevka';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url('@fontsource/iosevka/files/iosevka-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Iosevka';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url('@fontsource/iosevka/files/iosevka-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Iosevka';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url('@fontsource/iosevka/files/iosevka-latin-700-normal.woff2') format('woff2');
+}
+
+/* The page background lives on <body>, not on the app's root <div>, because
+   #root is the element the UI scale zooms (below). A `min-h-screen` inside a
+   zoomed element resolves 100vh in the zoomed coordinate space, which at 125%
+   would make the background box a quarter taller than the window and leave a
+   scrollbar on an empty page. <body> is outside the zoom, so 100vh is the
+   window and the gradient covers it at every scale. */
+body {
+  @apply min-h-screen bg-gradient-to-br from-slate-100 via-white to-slate-200 text-slate-900 transition-colors dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100;
+  font-family: 'Iosevka', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 'Noto Sans Mono CJK JP', 'Courier New', monospace;
+}
+
+/* UI scale (utils/uiScale.ts sets --ui-scale on <html>; unset means 100%).
+   `zoom` and not `transform: scale()`: zoom is a layout property, so the page
+   reflows to the scaled size and stays fully scrollable, whereas a transform
+   would paint the same layout larger and push its right edge out of reach. */
+#root {
+  zoom: var(--ui-scale, 1);
+}
+
+/* Desktop launcher (exe) only: keep the body at a readable width when the
+   `--app` window is dragged small. The launcher stamps `class="msl-launcher"`
+   onto <html> at serve time (launcher/server.ts), so this never applies to
+   the web build or PWA — mobile and tiny browser windows must keep wrapping.
+   480px is the sm breakpoint: below it the window contents scroll sideways
+   instead of the layout collapsing to a single stacked column. */
+html.msl-launcher body {
+  min-width: 480px;
+}
+
+.card {
+  @apply rounded-md bg-white shadow-lg border border-slate-200 p-2 dark:bg-slate-900 dark:border-slate-800;
+}
+
+/* The AI / AO / Parameter sections are grids of small cards, so the section's
+   own padding is pure frame around a frame. Defined after .card and applied as
+   `card card-tight`, because .card is unlayered plain CSS and a p-1 utility in
+   the class attribute could never override it. */
+.card-tight {
+  @apply p-1;
+}
+
+.button-primary {
+  @apply rounded-lg bg-emerald-500 px-4 py-1.5 font-semibold text-emerald-950 shadow hover:bg-emerald-400 disabled:opacity-60 disabled:cursor-not-allowed;
+}
+
+.button-secondary {
+  @apply rounded-lg border border-slate-300 px-3 py-1.5 font-semibold text-slate-800 hover:border-emerald-400 dark:border-slate-700 dark:text-slate-50;
+}
+
+/* Same shape as .button-secondary — an outline, not a filled button — but rose
+   throughout. For the destructive controls that sit next to ordinary ones
+   (ScriptRunner's Clear, which throws away the only copy of a script): the
+   emerald hover .button-secondary carries is the app's "go" colour, and reading
+   it on the one control in the row that destroys work is exactly backwards.
+   Outline and not solid red so it still loses the eye to Run/Stop beside it —
+   this is "be careful", not "press me". */
+.button-danger {
+  @apply rounded-lg border border-rose-300 px-3 py-1.5 font-semibold text-rose-700 hover:border-rose-500 hover:bg-rose-50 dark:border-rose-500/60 dark:text-rose-300 dark:hover:border-rose-400 dark:hover:bg-rose-950/40;
+}
+
+@keyframes stop-save-sine-pulse {
+  0% {
+    background-color: rgb(239 68 68 / 0.4);
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0.2);
+  }
+  50% {
+    background-color: rgb(239 68 68 / 1);
+    box-shadow: 0 0 18px 2px rgb(239 68 68 / 0.65);
+  }
+  100% {
+    background-color: rgb(239 68 68 / 0.4);
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0.2);
+  }
+}
+
+@keyframes stop-save-color-pulse {
+  0%,
+  100% {
+    background-color: rgb(239 68 68 / 0.5);
+  }
+  50% {
+    background-color: rgb(239 68 68 / 1);
+  }
+}
+
+.button-stop-save-pulse {
+  @apply rounded-lg px-4 py-1.5 font-semibold text-red-50 shadow;
+  /* Solid fallback so the button is always a visible red: the keyframes drive
+     the colour while animating, but if the animation is disabled (e.g. the OS
+     "reduce motion" setting, common on Windows) the button must still look like
+     a button rather than transparent text. */
+  background-color: rgb(239 68 68 / 1);
+  animation: stop-save-sine-pulse 1.6s ease-in-out infinite;
+}
+
+.button-stop-save-pulse:hover {
+  @apply bg-red-500;
+}
+
+/* Reduced motion: drop the expanding-glow motion but keep a gentle colour-only
+   pulse — this is a functional "saving in progress" indicator, not decoration,
+   so it should still draw the eye without any vestibular-triggering movement. */
+@media (prefers-reduced-motion: reduce) {
+  .button-stop-save-pulse {
+    animation: stop-save-color-pulse 2s ease-in-out infinite;
+  }
+}
+
+/* Footer log line, rolled like a departure board: the arriving line rises from
+   below the bar and shoves the one it replaces out through the top. The bar
+   shows exactly one line of a log that can be hundreds long, and a line that
+   merely *changes in place* gives no sign whether it changed once or thirty
+   times — the motion is the only thing carrying "that was a new line", which is
+   the whole reason to glance at the bar at all.
+
+   Short on purpose. This has to survive a script in a tight print loop, where
+   the bar is a blur either way; a slower roll would just make it a smeared one. */
+@keyframes script-log-roll-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes script-log-roll-out {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+.script-log-roll-in {
+  animation: script-log-roll-in 200ms ease-out;
+}
+
+/* `forwards` is load-bearing: without it the outgoing line snaps back to its
+   resting position at the end and sits on top of the incoming one, since it
+   stays mounted until the next line displaces it. */
+.script-log-roll-out {
+  animation: script-log-roll-out 200ms ease-out forwards;
+}
+
+/* Reduced motion: no roll. Unlike the Stop/Save pulse there is no colour-only
+   substitute worth keeping — the text change is itself the information, and it
+   still happens. The outgoing line has to be taken out of the flow rather than
+   merely un-animated: with `animation: none` it would hold its resting position
+   and cover the line arriving underneath it. */
+@media (prefers-reduced-motion: reduce) {
+  .script-log-roll-in {
+    animation: none;
+  }
+  .script-log-roll-out {
+    display: none;
+  }
+}
+
+/* Compact variant for the sticky header, where vertical space is the scarcest
+   thing on the page. It has to be a real class rather than `px-2 py-0.5`
+   utilities in the class attribute: every .button-* rule above is unlayered
+   plain CSS while Tailwind's utilities live in @layer utilities, and unlayered
+   rules always win over layered ones regardless of the order the class names
+   are written in. Keep this LAST — it beats the .button-* paddings (including
+   .button-stop-save-pulse) by source order, and only by that. */
+.button-compact {
+  @apply px-2.5 py-1 text-xs;
+}
+
+/* Connect / Start Save are the two buttons that get hit under time pressure,
+   often on a laptop trackpad next to a running test. They stay a size up from
+   .button-compact: the header saves its height on the labels and the icons, not
+   on the hit area of the controls that matter. Must also come after .button-*
+   for the same unlayered-CSS reason as .button-compact. */
+.button-touch {
+  @apply px-3 py-1 text-sm;
+}
+
+.input-compact {
+  @apply w-full rounded border border-slate-300 bg-white px-2 py-0.5 text-sm font-semibold text-slate-900 text-right dark:border-slate-800 dark:bg-slate-800 dark:text-slate-100;
+}
+
+.input-raw {
+  @apply font-semibold text-emerald-300;
+}
+
+/* Prism token colours for the Script Runner editor (components/CodeEditor.tsx).
+   Written here rather than importing one of Prism's own themes: those ship a
+   background, a font stack and a light-only palette, all of which would have to
+   be overridden anyway, and none of which follow the .dark variant this app
+   switches on. Hues are the app's own — emerald for strings, slate for the
+   inert punctuation — kept dim enough that the code reads as text first.
+   Only the tokens the three grammars actually emit are listed. */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #94a3b8; /* slate-400 */
+  font-style: italic;
+}
+
+.token.punctuation,
+.token.operator {
+  color: #64748b; /* slate-500 */
+}
+
+.token.keyword,
+.token.builtin,
+.token.important {
+  color: #7c3aed; /* violet-600 */
+}
+
+.token.string,
+.token.char,
+.token.regex {
+  color: #059669; /* emerald-600 */
+}
+
+.token.number,
+.token.boolean,
+.token.constant,
+.token.symbol {
+  color: #d97706; /* amber-600 */
+}
+
+.token.function,
+.token.class-name {
+  color: #0284c7; /* sky-600 */
+}
+
+.token.variable,
+.token.property,
+.token.attr-name {
+  color: #0f766e; /* teal-700 */
+}
+
+/* Dark: the same hues two steps lighter, for slate-800 rather than white. */
+.dark .token.comment,
+.dark .token.prolog,
+.dark .token.doctype,
+.dark .token.cdata {
+  color: #64748b; /* slate-500 */
+}
+
+.dark .token.punctuation,
+.dark .token.operator {
+  color: #94a3b8; /* slate-400 */
+}
+
+.dark .token.keyword,
+.dark .token.builtin,
+.dark .token.important {
+  color: #c4b5fd; /* violet-300 */
+}
+
+.dark .token.string,
+.dark .token.char,
+.dark .token.regex {
+  color: #6ee7b7; /* emerald-300 */
+}
+
+.dark .token.number,
+.dark .token.boolean,
+.dark .token.constant,
+.dark .token.symbol {
+  color: #fcd34d; /* amber-300 */
+}
+
+.dark .token.function,
+.dark .token.class-name {
+  color: #7dd3fc; /* sky-300 */
+}
+
+.dark .token.variable,
+.dark .token.property,
+.dark .token.attr-name {
+  color: #5eead4; /* teal-300 */
+}
+
+@keyframes heart-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.6; }
+}
+.heart-pulse {
+  display: inline-block;
+  animation: heart-pulse 1s ease-in-out infinite;
+}

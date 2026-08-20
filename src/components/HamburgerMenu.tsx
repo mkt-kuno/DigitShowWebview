@@ -1,0 +1,64 @@
+import { SlidePanel } from './SlidePanel';
+import { ThemeToggle } from './ThemeToggle';
+import { UiScaleControl } from './UiScaleControl';
+
+type HamburgerMenuProps = {
+  open: boolean;
+  onClose: () => void;
+  onSelectItem: (item: string) => void;
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
+};
+
+const MENU_ITEMS = [
+  { key: 'connection', label: 'Connection Config', icon: '🔌', wip: false },
+  { key: 'appInfo', label: 'Application Info', icon: 'ℹ️', wip: false },
+];
+
+export function HamburgerMenu({
+  open,
+  onClose,
+  onSelectItem,
+  isDarkMode,
+  onToggleTheme,
+}: HamburgerMenuProps) {
+  return (
+    <SlidePanel
+      open={open}
+      onClose={onClose}
+      title="Menu"
+      maxWidth="max-w-xs"
+      headerActions={
+        <>
+          <UiScaleControl />
+          <ThemeToggle isDarkMode={isDarkMode} onToggle={onToggleTheme} />
+        </>
+      }
+    >
+      <nav className="flex-1 overflow-y-auto p-2">
+        <ul className="space-y-1">
+          {MENU_ITEMS.map((item) => (
+            <li key={item.key}>
+              <button
+                type="button"
+                disabled={item.wip}
+                onClick={() => {
+                  onSelectItem(item.key);
+                  onClose();
+                }}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold ${
+                  item.wip
+                    ? 'cursor-not-allowed text-slate-400 dark:text-slate-600'
+                    : 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                <span className="w-6 shrink-0 text-center text-lg">{item.icon}</span>
+                <span>{item.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </SlidePanel>
+  );
+}

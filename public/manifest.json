@@ -1,0 +1,21 @@
+{
+  "name": "DigitShowWebview",
+  "short_name": "DSW",
+  "id": "digit-show-webview",
+  "description": "HTTPS polling viewer for DigitShowSide / DigitShowModbus",
+  "lang": "en",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./site.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

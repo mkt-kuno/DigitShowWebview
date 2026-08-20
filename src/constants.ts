@@ -1,0 +1,7 @@
+export const AI_CHANNELS = 16;
+export const AO_CHANNELS = 8;
+export const PARAM_CHANNELS = 32;
+
+export const CHART_REDRAW_INTERVAL_MS = 500;
+export const NON_SAVING_CHART_PREVIEW_POINTS = 768;
+export const CHART_INPUT_INTERVAL_MS = 100;
