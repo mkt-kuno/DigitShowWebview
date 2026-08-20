@@ -1,6 +1,7 @@
 import type { ConnectionConfig } from './types';
+import { readJsonStorage, writeJsonStorage } from './utils/cookies';
 
-const STORAGE_KEY = 'dsweb:connectionConfig:v1';
+const STORAGE_KEY = 'dsweb_connectionConfig_v1';
 
 export const defaultConfig: ConnectionConfig = {
   ip: '127.0.0.1',
@@ -10,41 +11,34 @@ export const defaultConfig: ConnectionConfig = {
 };
 
 export function loadConfig(): ConnectionConfig {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultConfig;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed
-      && typeof parsed.ip === 'string'
-      && parsed.ip.length > 0
-      && typeof parsed.port === 'number'
-      && Number.isInteger(parsed.port)
-      && parsed.port > 0
-      && parsed.port <= 65535
-      && typeof parsed.useHttps === 'boolean'
-    ) {
-      return {
-        ip: parsed.ip,
-        port: parsed.port,
-        useHttps: parsed.useHttps,
-        pollIntervalMs: (typeof parsed.pollIntervalMs === 'number' && Number.isInteger(parsed.pollIntervalMs) && parsed.pollIntervalMs > 0)
-          ? parsed.pollIntervalMs
+  const saved = readJsonStorage<Partial<ConnectionConfig>>(STORAGE_KEY);
+  if (!saved) return defaultConfig;
+  if (
+    typeof saved.ip === 'string'
+    && saved.ip.length > 0
+    && typeof saved.port === 'number'
+    && Number.isInteger(saved.port)
+    && saved.port > 0
+    && saved.port <= 65535
+    && typeof saved.useHttps === 'boolean'
+  ) {
+    return {
+      ip: saved.ip,
+      port: saved.port,
+      useHttps: saved.useHttps,
+      pollIntervalMs:
+        typeof saved.pollIntervalMs === 'number' &&
+        Number.isInteger(saved.pollIntervalMs) &&
+        saved.pollIntervalMs > 0
+          ? saved.pollIntervalMs
           : defaultConfig.pollIntervalMs,
-      };
-    }
-  } catch {
-    // ignore
+    };
   }
   return defaultConfig;
 }
 
 export function saveConfig(config: ConnectionConfig): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-  } catch {
-    // ignore
-  }
+  writeJsonStorage(STORAGE_KEY, config);
 }
 
 export function buildBaseUrl(config: ConnectionConfig): string {

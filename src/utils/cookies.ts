@@ -11,7 +11,7 @@ const isBrowser = typeof window !== 'undefined';
 // No migration from the old unscoped `modbus_logger_` keys: reading them back
 // here is exactly the sharing this prefix exists to end, since those keys may
 // just as well have been written by modbus_extra_logger.
-const KEY_PREFIX = 'modbus_simple_logger_';
+const KEY_PREFIX = 'digit_show_webview_';
 
 function getKey(key: string): string {
   return `${KEY_PREFIX}${key}`;
