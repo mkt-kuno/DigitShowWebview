@@ -386,7 +386,7 @@ export default function App() {
       <span
         title={title}
         translate="no"
-        className="min-w-0 flex-1 truncate rounded border border-slate-200 bg-white px-1 text-center text-xs leading-none text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+        className="min-w-0 flex-1 truncate rounded border border-slate-200 bg-white px-1 text-left text-xs leading-none text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
       >
         {display}
       </span>
