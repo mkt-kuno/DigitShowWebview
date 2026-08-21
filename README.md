@@ -4,11 +4,13 @@
 
 🌐 **Demo**: http://dsw.kmakoto.stream/
 
+> ⚠️ **研究室内ネットから Demo アプリ経由で接続する場合は、必ずバックエンドの IP アドレスを `Connection Config` に入力してください。** `localhost` のままではブラウザが動いている端末自身にしか繋がらず、研究室の計測サーバーには届きません。
+
 ## 使い方
 
 上記 URL を Chromium 系ブラウザ（Chrome / Edge）で開きます。初回訪問時に Service Worker がアプリ一式をプリキャッシュするため、以降はオフラインでも起動できます（アプリの更新は起動直後と Application Info の「Check for Updates」で確認できます。接続中は更新確認が停止します）。
 
-1. メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/health` への疎通確認ができます。
+1. メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/health` への疎通確認ができます。**研究室内ネットから利用する場合は `IP / Hostname` に研究室サーバーの IP アドレス（例: `157.82.159.114`）を入力してください。**
 2. ヘッダーの **Connect** を押すとポーリングを開始します。接続中は **Disconnect** がスワイプ操作（誤操作防止）になります。
 3. 設定はブラウザの localStorage へ端末ごとに保存されます。既定の接続先は `localhost:8080` です。
 
