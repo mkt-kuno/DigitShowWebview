@@ -4,7 +4,7 @@ import { readJsonStorage, writeJsonStorage } from './utils/cookies';
 const STORAGE_KEY = 'dsweb_connectionConfig_v1';
 
 export const defaultConfig: ConnectionConfig = {
-  ip: '127.0.0.1',
+  ip: 'localhost',
   port: 80,
   useHttps: false,
   pollIntervalMs: 2000,
