@@ -401,7 +401,7 @@ export default function App() {
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0">
               <h1 className="hidden text-lg font-bold leading-tight lg:block">
                 <a
-                  href="https://github.com/KikuchiMakoto/DigitShowWebview"
+                  href="https://github.com/mkt-kuno/DigitShowWebview"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-600 hover:underline dark:text-emerald-400"
