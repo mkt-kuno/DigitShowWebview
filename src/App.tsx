@@ -5,10 +5,12 @@ import { HamburgerMenu } from './components/HamburgerMenu';
 import { AppInfoPanel } from './components/AppInfoPanel';
 import { ConnectionConfigPanel } from './components/ConnectionConfigPanel';
 import { FooterBar } from './components/FooterBar';
+import { SlideToConfirm } from './components/SlideToConfirm';
 import { useChartAxes } from './hooks/useChartAxes';
 import { useTheme } from './hooks/useTheme';
 import { loadConfig, resolveApiUrl, saveConfig } from './apiConfig';
 import { AI_CHANNELS, AO_CHANNELS, PARAM_CHANNELS } from './constants';
+import { setUpdateChecksSuspended } from './utils/swUpdate';
 import type { ApiData, ApiPreview, ConnectionConfig, DataPoint } from './types';
 
 type Heartbeat = { running: boolean; info: string };
@@ -203,6 +205,13 @@ export default function App() {
 
   const lastPollFailedRef = useRef(false);
 
+  // Applying a PWA update reloads the page, which would drop the connection and
+  // stop the polling — so no update check runs at all while a device is
+  // connected (neither the periodic background one nor the App Info button).
+  useEffect(() => {
+    setUpdateChecksSuspended(connected);
+  }, [connected]);
+
   useEffect(() => {
     if (!connected) return;
     let cancelled = false;
@@ -292,6 +301,14 @@ export default function App() {
     setResponseTimeMs(null);
   }, []);
 
+  const handleToggleConnection = useCallback(() => {
+    if (connected) {
+      handleDisconnect();
+    } else {
+      handleConnect();
+    }
+  }, [connected, handleConnect, handleDisconnect]);
+
   const handleMenuSelect = useCallback((item: string) => {
     if (item === 'appInfo') setAppInfoOpen(true);
     else if (item === 'connection') setConnOpen(true);
@@ -369,7 +386,7 @@ export default function App() {
       <span
         title={title}
         translate="no"
-        className="min-w-0 flex-1 truncate rounded border border-slate-200 bg-white px-1 text-center text-xs leading-none text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+        className="min-w-0 flex-1 truncate rounded border border-slate-200 bg-white px-1 text-left text-xs leading-none text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
       >
         {display}
       </span>
@@ -384,7 +401,7 @@ export default function App() {
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0">
               <h1 className="hidden text-lg font-bold leading-tight lg:block">
                 <a
-                  href="https://github.com/KikuchiMakoto/DigitShowWebview"
+                  href="https://github.com/mkt-kuno/DigitShowWebview"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-600 hover:underline dark:text-emerald-400"
@@ -406,18 +423,40 @@ export default function App() {
               </div>
             </div>
             <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+              {/* Connect is a button; Disconnect is a swipe. They are not the
+                  same kind of action: connecting is recoverable by clicking
+                  again, while disconnecting drops the link mid-polling, and the
+                  two sit at the same spot — so the destructive one is the one a
+                  mis-click must not reach. */}
               {connected ? (
-                <button
-                  type="button"
-                  onClick={handleDisconnect}
-                  className="button-touch button-secondary min-w-[6rem] border-amber-400 text-amber-700 hover:border-amber-500 dark:border-amber-500/60 dark:text-amber-300"
-                >
-                  Disconnect
-                </button>
+                <SlideToConfirm
+                  label="Disconnect"
+                  armedLabel="Release"
+                  knobLabel="→"
+                  onConfirm={handleToggleConnection}
+                  // Grey, not a destructive rose: disconnecting is guarded
+                  // because it should not happen by accident, not because it is
+                  // alarming — and a permanently red control in the header would
+                  // be shouting at someone who is only ever looking at the
+                  // channel grid behind it.
+                  tone="neutral"
+                  // Squared off to .button-primary's rounded-lg. This slot
+                  // alternates between a plain button and this control, and a
+                  // pill swapping in for a button would restyle the header at
+                  // the moment the link came up.
+                  shape="boxy"
+                  knobPx={28}
+                  // Exactly the Connect button's 6rem: the two swap places in
+                  // the same slot, so the header must not reflow when the link
+                  // comes up.
+                  className="h-[30px] w-24"
+                  labelClassName="text-[0.7rem]"
+                  aria-label="Slide to disconnect the device"
+                />
               ) : (
                 <button
                   type="button"
-                  onClick={handleConnect}
+                  onClick={handleToggleConnection}
                   className="button-touch button-primary min-w-[6rem]"
                 >
                   Connect
@@ -500,7 +539,7 @@ export default function App() {
           <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-8 xl:grid-cols-8">
             {Array.from({ length: AO_CHANNELS }, (_, idx) => {
               const v = num(data.out[pad(idx)]);
-              const aoMeterHeight = Math.max(2, Math.min(1, Math.abs(v) / 10000) * 100);
+              const aoMeterHeight = Math.max(2, Math.min(1, Math.abs(v) / 10) * 100);
               const aoLabel = getAoLabel(idx);
               return (
               <div
@@ -516,7 +555,7 @@ export default function App() {
                     <div className="flex items-center justify-between leading-none">
                       <span className="shrink-0 text-sm font-medium text-slate-600 dark:text-slate-300 leading-none">V</span>
                       <span className="text-xl font-bold leading-none tabular-nums text-sky-600 dark:text-sky-400">
-                        {(v / 1000).toFixed(3)}
+                        {v.toFixed(3)}
                       </span>
                     </div>
                   </div>
@@ -557,7 +596,7 @@ export default function App() {
                       title={String(v)}
                       className="min-w-0 truncate text-right text-xl font-bold leading-none tabular-nums text-emerald-600 dark:text-emerald-400"
                     >
-                      {Number(v.toFixed(5)).toString()}
+                      {v.toFixed(3)}
                     </span>
                   </div>
                 </div>
@@ -627,7 +666,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
       />
-      <AppInfoPanel open={appInfoOpen} onClose={() => setAppInfoOpen(false)} />
+      <AppInfoPanel open={appInfoOpen} onClose={() => setAppInfoOpen(false)} connected={connected} />
       <ConnectionConfigPanel
         open={connOpen}
         onClose={() => setConnOpen(false)}

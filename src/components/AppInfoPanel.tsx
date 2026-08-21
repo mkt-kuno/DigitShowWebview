@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { FloatingWindow } from './FloatingWindow';
+import { checkForAppUpdate, isUpdateCheckSupported, type UpdateCheckResult } from '../utils/swUpdate';
 
 const DEP_VERSIONS: Record<string, string | undefined> = JSON.parse(
   import.meta.env.VITE_DEP_VERSIONS ?? '{}',
@@ -17,15 +19,53 @@ const LIBRARIES = [
 ].map((lib) => ({ ...lib, version: DEP_VERSIONS[lib.pkg] ?? 'unknown' }));
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'unknown';
-const APP_NAME = import.meta.env.VITE_APP_NAME ?? 'DigitShowWebview';
+const APP_NAME = 'DigitShowWebview';
+
+// The update itself is always confirmed by the window.confirm() prompt that the
+// check raises; these lines only report what the check found, since a button
+// with no visible outcome reads as broken.
+const UPDATE_STATUS: Record<UpdateCheckResult, string> = {
+  unsupported: 'Updates are not managed in this build.',
+  suspended: 'Disconnect the device to check for updates.',
+  prompted: 'A new version is available.',
+  downloading: 'Downloading a new version… you will be asked to reload when it is ready.',
+  'up-to-date': 'You are running the latest version.',
+  failed: 'Update check failed. Check your network connection.',
+};
 
 export function AppInfoPanel({
   open,
   onClose,
+  connected = false,
 }: {
   open: boolean;
   onClose: () => void;
+  // Applying an update reloads the page, which would drop the connection and
+  // stop the polling — so while a device is connected there is nothing to
+  // check for.
+  connected?: boolean;
 }) {
+  const [checking, setChecking] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+
+  // Same code path as the startup check (utils/swUpdate.ts): a ready new
+  // version raises the identical consent prompt, declining leaves it waiting.
+  const handleCheckForUpdates = async () => {
+    setChecking(true);
+    setUpdateStatus(null);
+    try {
+      setUpdateStatus(UPDATE_STATUS[await checkForAppUpdate()]);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // Drop the last check's result on connect: it would otherwise reappear as
+  // stale text once the device is disconnected again.
+  useEffect(() => {
+    if (connected) setUpdateStatus(null);
+  }, [connected]);
+
   return (
     <FloatingWindow open={open} onClose={onClose} title="Application Info" defaultWidth={384} defaultHeight={560}>
       <div className="flex flex-col gap-4 p-2 text-sm text-slate-700 dark:text-slate-200">
@@ -69,6 +109,25 @@ export function AppInfoPanel({
               </dd>
             </div>
           </dl>
+
+          {isUpdateCheckSupported() && (
+            <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={() => void handleCheckForUpdates()}
+                disabled={checking || connected}
+                title={connected ? 'Disconnect the device first — applying an update reloads the app' : undefined}
+                className="w-full rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-semibold text-emerald-950 shadow hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {checking ? 'Checking…' : 'Check for Updates'}
+              </button>
+              {(connected || updateStatus) && (
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  {connected ? UPDATE_STATUS.suspended : updateStatus}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div>

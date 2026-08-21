@@ -22,7 +22,6 @@ declare module 'react-plotly.js/factory' {
 
 interface ImportMetaEnv {
   readonly VITE_APP_VERSION: string;
-  readonly VITE_APP_NAME: string;
   readonly VITE_DEP_VERSIONS: string;
 }
 

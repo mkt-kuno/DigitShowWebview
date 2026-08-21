@@ -176,7 +176,7 @@ function ChartPanelComponent({
   }, [displayRevision, color, xDesc, yDesc, xAxis, yAxis, dataPoints, isEmpty]);
 
   const axisTitle = (key: string): string =>
-    key === 'time' ? 'Timestamp' : (axisLabels[key] ?? '');
+    key === 'time' ? 'Elapsed (s)' : (axisLabels[key] ?? '');
 
   const plotLayout = useMemo(
     () => ({
@@ -187,7 +187,9 @@ function ChartPanelComponent({
       xaxis: {
         title: { text: axisTitle(xAxis), font: { size: 11 } },
         gridcolor: palette.grid,
-        type: xAxis === 'time' ? ('date' as const) : ('linear' as const),
+        // `time` is the backend's elapsed-time array (float seconds), already
+        // linear — the date axis is only for absolute epoch timestamps.
+        type: 'linear' as const,
         ...(plot.xRange
           ? { range: plot.xRange, autorange: false as const }
           : { autorange: true as const }),
