@@ -38,6 +38,8 @@
 | `bun run typecheck` | 型チェック（`tsc --noEmit`） |
 | `bun run build` | 型チェック + 本番ビルド（`dist/` へ出力） |
 | `bun run preview` | ビルド結果のローカル確認 |
+| `bun run electronbun:dev` | Electrobun デスクトップアプリの dev 起動 |
+| `bun run electronbun:build` | Electrobun デスクトップアプリのビルド（macOS / Windows / Linux 向け） |
 
 ### ビルド成果物
 
@@ -46,6 +48,25 @@
 ## デプロイ
 
 カスタムドメイン `http://dsw.kmakoto.stream/` 配下に `dist/` の中身を配置してください。ホスティングの仕組み（VPS + nginx / Cloudflare Pages 等）はこのリポジトリでは管理しません — ビルドした `dist/` を任意の静的ファイル配信先に置けば動きます。
+
+## デスクトップアプリ（Electrobun）
+
+[Bun で組み込みランタイムを配布する](https://github.com/blackboardsh/electrobun)代わりに、[Electrobun](https://github.com/blackboardsh/electrobun) でネイティブウィンドウアプリとしてビルドできます。**OS の WebView を使うためバイナリは 14 MB 程度**（Bun 一本焼きの `serve.exe` は 117 MB）に収まります。
+
+```bash
+bun run electronbun:dev    # 開発モード
+bun run electronbun:build  # 本番ビルド
+```
+
+ビルド要件:
+
+- **macOS**: Xcode Command Line Tools、cmake (`brew install cmake`)
+- **Windows**: Visual Studio Build Tools (C++ 開発ツール)、cmake
+- **Linux**: build-essential、cmake、`libwebkit2gtk-4.1-dev`、`libgtk-3-dev`、`libayatana-appindicator3-dev`、`librsvg2-dev`
+
+`preBuild` フックで `bun run build` が走り、Vite の `dist/` を Electrobun の `views://mainview/` にコピーしてから packaging します。
+
+⚠️ 現環境（Windows / cmake のみ・VS Build Tools 不在）では `electrobun build` は失敗します。ビルド前に Visual Studio Installer から「C++ によるデスクトップ開発」を追加してください。
 
 ## ライセンス
 
