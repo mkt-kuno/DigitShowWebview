@@ -15,7 +15,7 @@ const APP_VERSION = '';
 // precache with it.
 const CACHE_PREFIX = 'digit-show-webview-';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
-const BASE_PATH = '/DigitShowWebview/';
+const BASE_PATH = '/';
 const ISOLATION_HEADERS = {
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp',
@@ -46,9 +46,8 @@ const withIsolationHeaders = (response) => {
 // inactive anyway (different base path).
 const PRECACHE_MANIFEST = [];
 const PRECACHE_URLS = [
-  // The start_url (`/DigitShowWebview/`) resolves to index.html but is a
-  // distinct cache key, so precache it explicitly for the offline navigation
-  // fallback.
+  // The start_url (`/`) resolves to index.html but is a distinct cache key,
+  // so precache it explicitly for the offline navigation fallback.
   BASE_PATH,
   ...PRECACHE_MANIFEST.map((path) => BASE_PATH + path),
 ];

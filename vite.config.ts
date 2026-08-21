@@ -80,7 +80,7 @@ export default defineConfig(() => ({
     global: 'globalThis',
     'process.env.DRAGGABLE_DEBUG': 'false',
   },
-  base: '/DigitShowWebview/',
+  base: '/',
   build: {
     target: 'es2022',
     rollupOptions: {

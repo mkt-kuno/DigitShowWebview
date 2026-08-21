@@ -2,7 +2,7 @@
 
 ブラウザで DigitShow（DigitShowSide / DigitShowModbus）の計測値を確認できる Web ビューアです。バックエンドを HTTP でポーリングし、Raw / Physical / Parameter の値とチャートを表示します。
 
-🌐 **Demo**: https://mkt-kuno.github.io/DigitShowWebview/
+🌐 **Demo**: http://dsw.kmakoto.stream/
 
 ## 使い方
 
@@ -10,7 +10,7 @@
 
 1. メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/health` への疎通確認ができます。
 2. ヘッダーの **Connect** を押すとポーリングを開始します。接続中は **Disconnect** がスワイプ操作（誤操作防止）になります。
-3. 設定はブラウザの localStorage へ端末ごとに保存されます。既定の接続先は `localhost:80` です。
+3. 設定はブラウザの localStorage へ端末ごとに保存されます。既定の接続先は `localhost:8080` です。
 
 表示できる内容:
 
