@@ -9,7 +9,13 @@ import { SlideToConfirm } from './components/SlideToConfirm';
 import { useChartAxes } from './hooks/useChartAxes';
 import { useTheme } from './hooks/useTheme';
 import { loadConfig, resolveApiUrl, saveConfig } from './apiConfig';
-import { AI_CHANNELS, AO_CHANNELS, PARAM_CHANNELS } from './constants';
+import {
+  AI_CHANNELS,
+  AO_CHANNELS,
+  PARAM_CHANNELS,
+  HEALTH_RECOVERY_MAX_ATTEMPTS,
+  HEALTH_RECOVERY_INTERVAL_MS,
+} from './constants';
 import { setUpdateChecksSuspended } from './utils/swUpdate';
 import type { ApiData, ApiPreview, ConnectionConfig, DataPoint } from './types';
 
@@ -203,86 +209,12 @@ export default function App() {
     axes.chart4X, axes.chart4Y,
   ]);
 
-  const lastPollFailedRef = useRef(false);
-
   // Applying a PWA update reloads the page, which would drop the connection and
   // stop the polling — so no update check runs at all while a device is
   // connected (neither the periodic background one nor the App Info button).
   useEffect(() => {
     setUpdateChecksSuspended(connected);
   }, [connected]);
-
-  useEffect(() => {
-    if (!connected) return;
-    let cancelled = false;
-    const poll = async () => {
-      const cycleStart = Date.now();
-      try {
-        const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/'));
-        if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
-        const dataJson = await dataRes.json();
-        if (!cancelled) {
-          setData(normalizeV1(dataJson));
-        }
-
-        const previewFields = Array.from(selectedPreviewAxes).join('&');
-        const previewUrl = `${resolveApiUrl(configRef.current, '/v1/preview')}?${previewFields}`;
-        const previewRes = await fetchWithTimeout(previewUrl);
-        if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
-        const previewJson = await previewRes.json();
-        if (!cancelled) {
-          setPreview({ data: normalizePreview(previewJson) });
-        }
-
-        const cycleTime = Date.now() - cycleStart;
-        if (!cancelled) setResponseTimeMs(cycleTime);
-
-        if (!cancelled) {
-          setHeartbeat({ running: true, info: 'Connected' });
-          lastPollFailedRef.current = false;
-        }
-      } catch {
-        if (!cancelled) {
-          lastPollFailedRef.current = true;
-          setHeartbeat({ running: false, info: 'Disconnected' });
-        }
-      }
-    };
-    void poll();
-    const id = setInterval(poll, connection.pollIntervalMs);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [connection, connected, selectedPreviewAxes]);
-
-  useEffect(() => {
-    if (!connected) return;
-    let cancelled = false;
-    let timeoutId: number | null = null;
-
-    const probe = async () => {
-      if (cancelled || !lastPollFailedRef.current) return;
-      try {
-        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/health'));
-        if (cancelled) return;
-        if (res.ok) {
-          setHeartbeat({ running: true, info: 'Connected' });
-          lastPollFailedRef.current = false;
-          return;
-        }
-      } catch {
-      }
-      if (!cancelled) timeoutId = window.setTimeout(probe, 5000);
-    };
-
-    const interval = window.setInterval(() => {
-      if (lastPollFailedRef.current) probe();
-    }, 1000);
-
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) clearTimeout(timeoutId);
-      clearInterval(interval);
-    };
-  }, [connection, connected]);
 
   const handleConnectionSave = useCallback((next: ConnectionConfig) => {
     saveConfig(next);
@@ -309,6 +241,105 @@ export default function App() {
     }
   }, [connected, handleConnect, handleDisconnect]);
 
+  // Polling + automatic recovery. A failed poll stops the /v1/ + /v1/preview
+  // loop entirely (no more hammering a dead backend) and hands over to a
+  // fixed-interval /v1/health probe. A live health response resumes polling
+  // immediately; HEALTH_RECOVERY_MAX_ATTEMPTS consecutive failures disconnect.
+  useEffect(() => {
+    if (!connected) return;
+    let cancelled = false;
+    let pollTimer: number | null = null;
+    let recoveryTimer: number | null = null;
+    let healthAttempts = 0;
+
+    const pollOnce = async () => {
+      const cycleStart = Date.now();
+      try {
+        const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/'));
+        if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
+        const dataJson = await dataRes.json();
+        if (!cancelled) {
+          setData(normalizeV1(dataJson));
+        }
+
+        // The `time` axis means wall-clock time: ask the backend for its
+        // epoch-second `timestamp` instead of the elapsed-seconds `time`.
+        const previewFields = Array.from(selectedPreviewAxes)
+          .map((k) => (k === 'time' ? 'timestamp' : k))
+          .join('&');
+        const previewUrl = `${resolveApiUrl(configRef.current, '/v1/preview')}?${previewFields}`;
+        const previewRes = await fetchWithTimeout(previewUrl);
+        if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
+        const previewJson = await previewRes.json();
+        if (!cancelled) {
+          setPreview({ data: normalizePreview(previewJson) });
+        }
+
+        const cycleTime = Date.now() - cycleStart;
+        if (!cancelled) setResponseTimeMs(cycleTime);
+
+        if (!cancelled) {
+          setHeartbeat({ running: true, info: 'Connected' });
+        }
+      } catch {
+        if (cancelled) return;
+        if (pollTimer !== null) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+        healthAttempts = 0;
+        setHeartbeat({ running: false, info: 'Reconnecting…' });
+        void runHealthCheck();
+      }
+    };
+
+    const runHealthCheck = async () => {
+      if (cancelled) return;
+      healthAttempts += 1;
+      setHeartbeat({
+        running: false,
+        info: `Reconnecting… (${healthAttempts}/${HEALTH_RECOVERY_MAX_ATTEMPTS})`,
+      });
+      let healthy = false;
+      try {
+        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/health'));
+        healthy = res.ok;
+      } catch {
+        healthy = false;
+      }
+      if (cancelled) return;
+
+      if (healthy) {
+        if (recoveryTimer !== null) {
+          clearTimeout(recoveryTimer);
+          recoveryTimer = null;
+        }
+        healthAttempts = 0;
+        setHeartbeat({ running: true, info: 'Connected' });
+        // Resume with an immediate poll: health may be fine while /v1/ is not
+        // (server up, Modbus down), and that should re-enter recovery quickly.
+        void pollOnce();
+        pollTimer = window.setInterval(pollOnce, connection.pollIntervalMs);
+        return;
+      }
+
+      if (healthAttempts >= HEALTH_RECOVERY_MAX_ATTEMPTS) {
+        handleDisconnect();
+        return;
+      }
+      recoveryTimer = window.setTimeout(runHealthCheck, HEALTH_RECOVERY_INTERVAL_MS);
+    };
+
+    void pollOnce();
+    pollTimer = window.setInterval(pollOnce, connection.pollIntervalMs);
+
+    return () => {
+      cancelled = true;
+      if (pollTimer !== null) clearInterval(pollTimer);
+      if (recoveryTimer !== null) clearTimeout(recoveryTimer);
+    };
+  }, [connection, connected, selectedPreviewAxes, handleDisconnect]);
+
   const handleMenuSelect = useCallback((item: string) => {
     if (item === 'appInfo') setAppInfoOpen(true);
     else if (item === 'connection') setConnOpen(true);
@@ -317,7 +348,7 @@ export default function App() {
 
   const chartDataPoints = useMemo<DataPoint[]>(() => {
     if (!preview || !preview.data) return [];
-    const timeArr = preview.data['time'] ?? [];
+    const timeArr = preview.data['timestamp'] ?? [];
     const safeGet = (k: string): (number | null)[] => {
       const arr = preview.data[k];
       return Array.isArray(arr) ? arr : [];
