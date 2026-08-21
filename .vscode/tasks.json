@@ -24,6 +24,12 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Release",
+      "type": "compound",
+      "dependsOn": ["build www.zip"],
+      "problemMatcher": []
     }
   ]
 }
