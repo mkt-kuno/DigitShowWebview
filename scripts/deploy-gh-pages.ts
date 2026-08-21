@@ -22,7 +22,7 @@
 // would otherwise pile up a copy per deploy; unchanged files keep the same blob
 // hashes, so a re-push of mostly-identical output costs almost nothing.
 
-import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -55,20 +55,6 @@ if (!existsSync(join(dist, 'index.html'))) {
   fail('dist/index.html is missing. Run `bun run build` first (or use `bun run deploy`).');
 }
 
-// The version the app will report once it is live comes from package.json at
-// BUILD time, injected into sw.js. If those two disagree, dist/ is left over
-// from an earlier build and publishing it would quietly ship the old bundle
-// under the new version's name — the one failure of a manual deploy that is
-// invisible afterwards.
-const pkgVersion = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version as string;
-const builtVersion = /APP_VERSION\s*=\s*'([^']+)'/.exec(readFileSync(join(dist, 'sw.js'), 'utf8'))?.[1];
-if (builtVersion !== pkgVersion) {
-  fail(
-    `dist/ was built from version ${builtVersion ?? '(unknown)'} but package.json says ${pkgVersion}. ` +
-      'Run `bun run build` again.',
-  );
-}
-
 // Branch-served Pages runs the output through Jekyll unless this file is there,
 // which at best costs a minute per deploy and at worst drops paths Jekyll
 // considers its own. The artifact-based deployment this replaced never ran
@@ -77,6 +63,9 @@ writeFileSync(join(dist, '.nojekyll'), '');
 
 const head = run(['git', 'rev-parse', '--short', 'HEAD']);
 const dirty = run(['git', 'status', '--porcelain']) !== '';
+// pkg.json is also read for the version string, embedded in the deploy commit
+// message so the gh-pages history tells you which release each push carries.
+const pkgVersion = run(['node', '-p', "require('./package.json').version"]);
 const message = `Deploy v${pkgVersion} (${head}${dirty ? '-dirty' : ''})`;
 
 const indexDir = mkdtempSync(join(tmpdir(), 'msl-ghpages-'));

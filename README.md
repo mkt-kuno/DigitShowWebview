@@ -8,7 +8,7 @@
 
 ## 使い方
 
-上記 URL を Chromium 系ブラウザ（Chrome / Edge）で開きます。初回訪問時に Service Worker がアプリ一式をプリキャッシュするため、以降はオフラインでも起動できます（アプリの更新は起動直後と Application Info の「Check for Updates」で確認できます。接続中は更新確認が停止します）。
+上記 URL を Chromium 系ブラウザ（Chrome / Edge）で開きます。Service Worker は使用していないため、毎回サーバーから取得します（ブラウザキャッシュは有効です）。
 
 1. メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/health` への疎通確認ができます。**研究室内ネットから利用する場合は `IP / Hostname` に研究室サーバーの IP アドレス（例: `157.82.159.114`）を入力してください。**
 2. ヘッダーの **Connect** を押すとポーリングを開始します。接続中は **Disconnect** がスワイプ操作（誤操作防止）になります。
@@ -42,14 +42,13 @@
 
 ### ビルド成果物
 
-`bun run build` を実行すると `dist/` に静的ファイル（SPA 本体・Service Worker・manifest など）が生成されます。`dist/sw.js` にはビルド時にプリキャッシュ対象一覧・キャッシュバージョン・アプリバージョンが注入されます（`vite.config.ts` の `precache-manifest` プラグイン）。
+`bun run build` を実行すると `dist/` に静的ファイル（SPA 本体）が生成されます。Service Worker / manifest は含まれません。
 
 ## デプロイ（Web 版公開）
 
 `bun run deploy` は `bun run build` → `scripts/deploy-gh-pages.ts` の順に実行します。Pages の Source は **`gh-pages` ブランチ / `(root)`** で、CI での自動デプロイは行いません（公開されるのは手元でビルドした `dist/` です）。
 
 - スクリプトは `git checkout` を一切使わず、使い捨ての index に `dist/` を登録して orphan commit を作り、`gh-pages` へ force push します（常に1コミット。作業ツリーが汚れていても安全）
-- `dist/sw.js` の `APP_VERSION` と `package.json` の version が食い違う場合は中断します（古い `dist/` を新バージョンの名前で公開する事故防止）
 - Jekyll 抑止の `.nojekyll` はスクリプトが自動で入れます
 - 反映には push 後 1〜2 分かかります
 

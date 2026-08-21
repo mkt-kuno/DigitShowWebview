@@ -16,7 +16,6 @@ import {
   HEALTH_RECOVERY_MAX_ATTEMPTS,
   HEALTH_RECOVERY_INTERVAL_MS,
 } from './constants';
-import { setUpdateChecksSuspended } from './utils/swUpdate';
 import type { ApiData, ApiPreview, ConnectionConfig, DataPoint } from './types';
 
 type Heartbeat = { running: boolean; info: string };
@@ -209,12 +208,7 @@ export default function App() {
     axes.chart4X, axes.chart4Y,
   ]);
 
-  // Applying a PWA update reloads the page, which would drop the connection and
-  // stop the polling — so no update check runs at all while a device is
-  // connected (neither the periodic background one nor the App Info button).
-  useEffect(() => {
-    setUpdateChecksSuspended(connected);
-  }, [connected]);
+  // PWA update checks were removed alongside the Service Worker.
 
   const handleConnectionSave = useCallback((next: ConnectionConfig) => {
     saveConfig(next);
@@ -697,7 +691,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
       />
-      <AppInfoPanel open={appInfoOpen} onClose={() => setAppInfoOpen(false)} connected={connected} />
+      <AppInfoPanel open={appInfoOpen} onClose={() => setAppInfoOpen(false)} />
       <ConnectionConfigPanel
         open={connOpen}
         onClose={() => setConnOpen(false)}
