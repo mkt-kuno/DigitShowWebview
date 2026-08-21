@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initUiScale } from './utils/uiScale';
+import { setupServiceWorker } from './utils/swUpdate';
 
 initUiScale();
 
@@ -60,3 +61,8 @@ if (rootElement) {
     </React.StrictMode>,
   );
 }
+
+// Service Worker registration + the consent-gated update flow (and, in launcher
+// mode, the unregistration of any leftover SW) live in utils/swUpdate.ts, which
+// App Info's "Check for Updates" button reuses for its check.
+setupServiceWorker();
