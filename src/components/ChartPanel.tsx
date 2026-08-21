@@ -146,11 +146,13 @@ function ChartPanelComponent({
       const p = dataPoints[i];
       const xv = resolveAxisValue(p, xDesc);
       const yv = resolveAxisValue(p, yDesc);
-      xData[i] = xv;
+      // `time` is epoch seconds from the backend; the date axis is in ms.
+      const vx = xDesc.kind === 'time' ? xv * 1000 : xv;
+      xData[i] = vx;
       yData[i] = yv;
-      if (Number.isFinite(xv)) {
-        if (xv < xMin) xMin = xv;
-        if (xv > xMax) xMax = xv;
+      if (Number.isFinite(vx)) {
+        if (vx < xMin) xMin = vx;
+        if (vx > xMax) xMax = vx;
       }
       if (Number.isFinite(yv)) {
         if (yv < yMin) yMin = yv;
@@ -176,7 +178,7 @@ function ChartPanelComponent({
   }, [displayRevision, color, xDesc, yDesc, xAxis, yAxis, dataPoints, isEmpty]);
 
   const axisTitle = (key: string): string =>
-    key === 'time' ? 'Elapsed (s)' : (axisLabels[key] ?? '');
+    key === 'time' ? 'Time' : (axisLabels[key] ?? '');
 
   const plotLayout = useMemo(
     () => ({
@@ -187,9 +189,9 @@ function ChartPanelComponent({
       xaxis: {
         title: { text: axisTitle(xAxis), font: { size: 11 } },
         gridcolor: palette.grid,
-        // `time` is the backend's elapsed-time array (float seconds), already
-        // linear — the date axis is only for absolute epoch timestamps.
-        type: 'linear' as const,
+        // `time` is an absolute axis: the backend's epoch seconds are
+        // plotted in ms, and the date axis renders wall-clock ticks.
+        type: (xAxis === 'time' ? 'date' : 'linear') as 'date' | 'linear',
         ...(plot.xRange
           ? { range: plot.xRange, autorange: false as const }
           : { autorange: true as const }),
