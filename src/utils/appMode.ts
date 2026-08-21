@@ -5,10 +5,10 @@
 // because the launcher bound the loopback interface and nothing else did. The
 // server states the mode instead of the client guessing it: the launcher
 // injects a <meta name="msl-runtime"> marker into the index.html it serves, and
-// nothing else does. Static deployments (GitHub Pages, `vite dev`, `vite
-// preview`) ship the repo's index.html unmodified and so have no marker.
+// nothing else does. Static deployments (custom domain hosting, `vite dev`,
+// `vite preview`) ship the repo's index.html unmodified and so have no marker.
 export type AppRuntime =
-  /** Plain web deployment: GitHub Pages, PWA install, `vite dev`. */
+  /** Plain web deployment: custom domain hosting, `vite dev`. */
   | 'web'
   /** Served by the desktop launcher exe. */
   | 'launcher';

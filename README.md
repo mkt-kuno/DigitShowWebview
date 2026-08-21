@@ -38,19 +38,14 @@
 | `bun run typecheck` | 型チェック（`tsc --noEmit`） |
 | `bun run build` | 型チェック + 本番ビルド（`dist/` へ出力） |
 | `bun run preview` | ビルド結果のローカル確認 |
-| `bun run deploy` | ビルドして GitHub Pages（`gh-pages` ブランチ）へ公開 |
 
 ### ビルド成果物
 
 `bun run build` を実行すると `dist/` に静的ファイル（SPA 本体）が生成されます。Service Worker / manifest は含まれません。
 
-## デプロイ（Web 版公開）
+## デプロイ
 
-`bun run deploy` は `bun run build` → `scripts/deploy-gh-pages.ts` の順に実行します。Pages の Source は **`gh-pages` ブランチ / `(root)`** で、CI での自動デプロイは行いません（公開されるのは手元でビルドした `dist/` です）。
-
-- スクリプトは `git checkout` を一切使わず、使い捨ての index に `dist/` を登録して orphan commit を作り、`gh-pages` へ force push します（常に1コミット。作業ツリーが汚れていても安全）
-- Jekyll 抑止の `.nojekyll` はスクリプトが自動で入れます
-- 反映には push 後 1〜2 分かかります
+カスタムドメイン `http://dsw.kmakoto.stream/` 配下に `dist/` の中身を配置してください。ホスティングの仕組み（VPS + nginx / Cloudflare Pages 等）はこのリポジトリでは管理しません — ビルドした `dist/` を任意の静的ファイル配信先に置けば動きます。
 
 ## ライセンス
 
