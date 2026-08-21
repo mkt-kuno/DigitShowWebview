@@ -5,7 +5,7 @@ const STORAGE_KEY = 'dsweb_connectionConfig_v1';
 
 export const defaultConfig: ConnectionConfig = {
   ip: 'localhost',
-  port: 80,
+  port: 8080,
   useHttps: false,
   pollIntervalMs: 2000,
 };
