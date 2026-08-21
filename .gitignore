@@ -5,20 +5,8 @@ npm-debug.log*
 dist
 .DS_Store
 
-# Launcher (kept from an earlier layout; this repo doesn't use launcher/,
-# but the ignore is harmless and avoids surprises if anything ever lands there).
-launcher/
-
-# Serve: track the source files in serve/, but exclude the build artifacts
-# the generate-embed / build scripts produce (they depend on the current
-# dist/ contents and would churn the repo on every build).
-serve/embedded.generated.ts
-serve/bin/
-
 # Bun build scratch files
 *.bun-build
 
-# Electrobun build artifacts
-build/
-.electrobun-cache/
-
+# Kilo session state
+.kilo/

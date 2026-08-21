@@ -7,11 +7,7 @@
     "dev": "bunx vite dev",
     "typecheck": "bunx tsc --noEmit",
     "build": "bun run typecheck && bunx vite build",
-    "preview": "bunx vite preview",
-    "serve:generate": "bun run serve/generate-embed.ts",
-    "serve:build": "bun run serve/build.ts",
-    "electronbun:dev": "electrobun dev",
-    "electronbun:build": "electrobun build"
+    "preview": "bunx vite preview"
   },
   "dependencies": {
     "@fontsource/iosevka": "^5.3.0",
@@ -27,10 +23,8 @@
     "@types/plotly.js": "^3.0.13",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.0.5",
     "autoprefixer": "^10.5.4",
-    "electrobun": "^1.18.1",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
