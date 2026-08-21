@@ -2,7 +2,8 @@ node_modules
 bun.lockb
 package-lock.json
 npm-debug.log*
-dist
+www
+www.zip
 .DS_Store
 
 # Bun build scratch files

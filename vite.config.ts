@@ -35,6 +35,9 @@ export default defineConfig(() => ({
   base: '/',
   build: {
     target: 'es2022',
+    // www/ (not the default dist/) so the build output can be dropped next to
+    // DigitShowModbus as a sibling www/ folder.
+    outDir: 'www',
     rollupOptions: {
       output: {
         manualChunks(id) {

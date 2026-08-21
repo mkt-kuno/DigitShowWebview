@@ -37,6 +37,8 @@ DigitShow（DigitShowSide / DigitShowModbus）の計測値を確認できるビ�
 | `bun run build` | 型チェック + 本番ビルド（`dist/` へ出力） |
 | `bun run preview` | ビルド結果のローカルブラウザ確認 |
 
+> VS Code では `Ctrl+Shift+B` で `build` タスクが走ります。配布用の `www.zip` を作るにはコマンドパレット → "Tasks: Run Task" → `build www.zip` を選択（事前に `www/` を生成）。
+
 ### ビルド成果物
 
 `bun run build` を実行すると `dist/` に静的ファイル（SPA 本体）が生成されます。Service Worker / manifest は含まれません。
