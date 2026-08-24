@@ -1,16 +1,16 @@
 # DigitShowWebview
 
-ブラウザで DigitShow（DigitShowSide / DigitShowModbus）の計測値を確認できる Web ビューアです。バックエンドを HTTP でポーリングし、Raw / Physical / Parameter の値とチャートを表示します。
+DigitShow（DigitShowSide / DigitShowModbus）の計測値を確認できるビューアです。バックエンドを HTTP でポーリングし、Raw / Physical / Parameter の値とチャートを表示します。
 
-🌐 **Demo**: https://mkt-kuno.github.io/DigitShowWebview/
+> ⚠️ **研究室内ネットから利用する場合は、必ずバックエンドの IP アドレスを `Connection Config` に入力してください。** `localhost` のままではアプリが動いている端末自身にしか繋がらず、研究室の計測サーバーには届きません。
 
 ## 使い方
 
-上記 URL を Chromium 系ブラウザ（Chrome / Edge）で開きます。初回訪問時に Service Worker がアプリ一式をプリキャッシュするため、以降はオフラインでも起動できます（アプリの更新は起動直後と Application Info の「Check for Updates」で確認できます。接続中は更新確認が停止します）。
+`bun run build` で `dist/` に静的ファイルが生成されます。配信方法は問いません — DigitShowModbus と同じディレクトリに `www/` として配置する（`vite.config.ts` の `build.outDir` を `'www'` に変える）運用も、任意の HTTP サーバで配信する運用も、`bun run preview` でローカルブラウザ確認するのもよし。
 
-1. メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/health` への疎通確認ができます。
-2. ヘッダーの **Connect** を押すとポーリングを開始します。接続中は **Disconnect** がスワイプ操作（誤操作防止）になります。
-3. 設定はブラウザの localStorage へ端末ごとに保存されます。既定の接続先は `localhost:80` です。
+メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/health` への疎通確認ができます。**研究室内ネットから利用する場合は `IP / Hostname` に研究室サーバーの IP アドレス（例: `157.82.159.114`）を入力してください。**
+
+ヘッダーの **Connect** を押すとポーリングを開始します。接続中は **Disconnect** がスワイプ操作（誤操作防止）になります。設定はブラウザの localStorage へ端末ごとに保存されます。既定の接続先は `localhost:8080` です。
 
 表示できる内容:
 
@@ -35,21 +35,16 @@
 | `bun run dev` | 開発サーバ起動 (HMR) |
 | `bun run typecheck` | 型チェック（`tsc --noEmit`） |
 | `bun run build` | 型チェック + 本番ビルド（`dist/` へ出力） |
-| `bun run preview` | ビルド結果のローカル確認 |
-| `bun run deploy` | ビルドして GitHub Pages（`gh-pages` ブランチ）へ公開 |
+| `bun run preview` | ビルド結果のローカルブラウザ確認 |
+
+> VS Code のタスク:
+> - `Ctrl+Shift+B` → `build`（typecheck + Vite production build）
+> - コマンドパレット → "Tasks: Run Task" → `build www.zip`（`build` 後に `www/` を zip 化）
+> - 同 → `Release`（`build www.zip` を内包する compound task = build + zip を一発で実行）
 
 ### ビルド成果物
 
-`bun run build` を実行すると `dist/` に静的ファイル（SPA 本体・Service Worker・manifest など）が生成されます。`dist/sw.js` にはビルド時にプリキャッシュ対象一覧・キャッシュバージョン・アプリバージョンが注入されます（`vite.config.ts` の `precache-manifest` プラグイン）。
-
-## デプロイ（Web 版公開）
-
-`bun run deploy` は `bun run build` → `scripts/deploy-gh-pages.ts` の順に実行します。Pages の Source は **`gh-pages` ブランチ / `(root)`** で、CI での自動デプロイは行いません（公開されるのは手元でビルドした `dist/` です）。
-
-- スクリプトは `git checkout` を一切使わず、使い捨ての index に `dist/` を登録して orphan commit を作り、`gh-pages` へ force push します（常に1コミット。作業ツリーが汚れていても安全）
-- `dist/sw.js` の `APP_VERSION` と `package.json` の version が食い違う場合は中断します（古い `dist/` を新バージョンの名前で公開する事故防止）
-- Jekyll 抑止の `.nojekyll` はスクリプトが自動で入れます
-- 反映には push 後 1〜2 分かかります
+`bun run build` を実行すると `dist/` に静的ファイル（SPA 本体）が生成されます。Service Worker / manifest は含まれません。
 
 ## ライセンス
 

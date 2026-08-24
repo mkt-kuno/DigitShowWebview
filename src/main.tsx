@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { initUiScale } from './utils/uiScale';
-import { setupServiceWorker } from './utils/swUpdate';
 
 initUiScale();
 
@@ -62,7 +61,6 @@ if (rootElement) {
   );
 }
 
-// Service Worker registration + the consent-gated update flow (and, in launcher
-// mode, the unregistration of any leftover SW) live in utils/swUpdate.ts, which
-// App Info's "Check for Updates" button reuses for its check.
-setupServiceWorker();
+// Service Worker registration was removed; HTTP deployment (custom domain)
+// forbids SW registration outside localhost, so the page reloads on every visit
+// to fetch the latest build.
