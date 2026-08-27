@@ -48,7 +48,7 @@ export function ConnectionConfigPanel({
     if (!isValidIp(ip)) { setError('Invalid IP or hostname'); return; }
     const portNum = Number(port);
     if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) { setError('Invalid port'); return; }
-    const url = `${buildBaseUrl({ ip, port: portNum, useHttps: false, pollIntervalMs })}/v1/health`;
+    const url = `${buildBaseUrl({ ip, port: portNum, useHttps: false, pollIntervalMs })}/v1/heartbeat`;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 3000);
