@@ -70,7 +70,7 @@ function normalizeV2(raw: unknown): ApiData {
     return { values, labels };
   };
 
-  // Raw is int16 register value — round to integer. Phy/Par/Out are floats.
+  // Raw is int16 register value in /v2/realtime — round to integer. Phy/Par/Out are floats.
   const rawF = extract(v.raw, true);
   const phyF = extract(v.phy, false);
   const parF = extract(v.par, false);
@@ -125,14 +125,11 @@ function normalizePreview(raw: unknown): Record<string, (number | null)[]> {
     }
   }
 
-for (const [k, v] of Object.entries(flat)) {
+  for (const [k, v] of Object.entries(flat)) {
     if (Array.isArray(v)) {
-      const isRaw = k.startsWith('raw_');
       result[k] = v.map((n) => {
         const num = typeof n === 'number' ? n : Number(n);
-        if (!Number.isFinite(num)) return null;
-        // Raw is int16 — round to integer; everything else stays float.
-        return isRaw ? Math.round(num) : num;
+        return Number.isFinite(num) ? num : null;
       });
     }
   }
