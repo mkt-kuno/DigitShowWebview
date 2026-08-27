@@ -48,14 +48,23 @@ export function ConnectionConfigPanel({
     if (!isValidIp(ip)) { setError('Invalid IP or hostname'); return; }
     const portNum = Number(port);
     if (!Number.isInteger(portNum) || portNum < 1 || portNum > 65535) { setError('Invalid port'); return; }
-    const url = `${buildBaseUrl({ ip, port: portNum, useHttps: false, pollIntervalMs })}/v1/heartbeat`;
+    const url = `${buildBaseUrl({ ip, port: portNum, useHttps: false, pollIntervalMs })}/v2/heartbeat`;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 3000);
       const res = await fetch(url, { signal: ctrl.signal });
       clearTimeout(timer);
-      if (res.ok) setTestStatus({ ok: true, message: `OK ${res.status}` });
-      else setTestStatus({ ok: false, message: `HTTP ${res.status}` });
+      if (res.ok) {
+        try {
+          const data = (await res.json()) as { status?: string; version?: string; app?: string };
+          const details = [data.app, data.version ? `v${data.version}` : ''].filter(Boolean).join(' ');
+          setTestStatus({ ok: true, message: details ? `OK (${details})` : `OK ${res.status}` });
+        } catch {
+          setTestStatus({ ok: true, message: `OK ${res.status}` });
+        }
+      } else {
+        setTestStatus({ ok: false, message: `HTTP ${res.status}` });
+      }
     } catch (err) {
       setTestStatus({ ok: false, message: (err as Error).message ?? 'Failed' });
     }
