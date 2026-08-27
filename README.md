@@ -1,59 +1,88 @@
 # DigitShowWebview
 
-DigitShow（DigitShowSide / DigitShowModbus）の計測値を確認できるビューアです。バックエンドを HTTP でポーリングし、Raw / Physical / Parameter の値とチャートを表示します。
+DigitShow（DigitShowModbus / DigitShowSide）のリアルタイム計測値や時系列チャートを手元の PC で遠隔監視・確認できるクロスプラットフォーム対応の HTTP ビューアです。
 
-> ⚠️ **研究室内ネットから利用する場合は、必ずバックエンドの IP アドレスを `Connection Config` に入力してください。** `localhost` のままではアプリが動いている端末自身にしか繋がらず、研究室の計測サーバーには届きません。
+---
+
+## 運用構成
+
+同一ネットワーク（プライベート LAN / 同一サブネット内）において、**試験機 PC（ターゲット）** と **監視 PC（ホスト）** を接続して運用します。
+
+```
++------------------------------------+          +------------------------------------+
+|        試験機 PC (ターゲット)        |          |          監視 PC (ホスト)          |
+|                                    |   HTTP   |                                    |
+|  DigitShowModbus / DigitShowSide   | <──────> |  DigitShowWebview.exe (本アプリ)    |
+|  (HTTP API: 192.168.x.x:8080 等)    |  (LAN)   |  (手元の PC でダブルクリック起動)   |
++------------------------------------+          +------------------------------------+
+```
+
+- **試験機 PC（ターゲット）**: センサーや Modbus デバイスと接続され、DigitShowModbus / DigitShowSide が動作している計測用 PC。
+- **監視 PC（ホスト）**: 手元で計測データを確認・監視する作業用 PC。**本アプリ（実行バイナリ）はこちらの監視 PC で起動します。**
+  - ※ 以前のように静的ファイルを試験機の `www/` に配置する必要はありません。
+
+---
 
 ## 使い方
 
-`bun run build` で `dist/` に静的ファイルが生成されます。配信方法は問いません — DigitShowModbus と同じディレクトリに `www/` として配置する（`vite.config.ts` の `build.outDir` を `'www'` に変える）運用も、任意の HTTP サーバで配信する運用も、`bun run preview` でローカルブラウザ確認するのもよし。
+### 1. アプリの起動
+監視 PC 上で各 OS 向けの実行ファイル（Windows の場合は `DigitShowWebview.exe`）を起動します。
+ローカル HTTP サーバーが自動起動し、アドレスバーのない専用アプリウィンドウ（Edge / Chrome `--app` モード）が立ち上がります。
 
-メニュー → **Connection Config** でバックエンドの接続先を設定します（IP / ホスト名・ポート・ポーリング周期 1s / 2s / 5s）。`Test Connection` で `/v1/heartbeat` への疎通確認ができます。**研究室内ネットから利用する場合は `IP / Hostname` に研究室サーバーの IP アドレス（例: `157.82.159.114`）を入力してください。**
+### 2. バックエンド接続先の設定 (`Connection Config`)
+1. 右上のメニューアイコン（☰） $\rightarrow$ **Connection Config** を開きます。
+2. **`IP / Hostname`** に **試験機 PC（ターゲット）の IP アドレス**（例: `192.168.1.50` や `157.82.xxx.xxx`）を入力します。
+3. **`Port`** にバックエンドのポート（既定: `8080`）を入力します。
+4. **`Test Connection`** を押して、`/v1/heartbeat` への疎通（OK 200）を確認します。
+   - ※ 設定内容は監視 PC のブラウザ（localStorage）に自動保存されます。
 
-ヘッダーの **Connect** を押すとポーリングを開始します。接続中は **Disconnect** がスワイプ操作（誤操作防止）になります。設定はブラウザの localStorage へ端末ごとに保存されます。既定の接続先は `localhost:8080` です。
+### 3. 計測データの監視開始
+ヘッダーの **Connect** ボタンを押すと、試験機 PC からの定期ポーリング（`/v1/realtime` および `/v1/preview`）が開始されます。
+接続中は誤操作防止のため、**Disconnect** がスワイプ操作（ドラッグ確定）になります。
 
-表示できる内容:
+---
 
-- AI 16ch の **Raw / Physical** 値と、AO 8ch / Parameter 16ch の値
-- X / Y 軸を自由に選択できるチャート 4 枚（`time` / `raw_NN` / `phy_NN` / `par_NN`）
-- ダークモードと UI 拡大率（50〜200%）の切り替え（メニューヘッダー）
+## 主な機能・表示内容
 
-データは `GET /v1/realtime` および `GET /v1/preview?param=...` を定期的にポーリングして取得します。
+- **AI 16ch**: アナログ入力生値（Raw）およびキャリブレーション後の物理量（Physical）表示
+- **AO 8ch / Parameter 32ch**: アナログ出力値および内部パラメータの表示・監視
+- **リアルタイムチャート 4 枚**:
+  - X 軸 / Y 軸を任意に選択可能（`time`, `raw_00..15`, `phy_00..15`, `par_00..31`）
+  - 応力-ひずみヒステリシスループなどのパラメトリック曲線 (x(t), y(t)) の高速描画に対応
+- **UI 調整**: ダークモード切替、UI 拡大縮小（50% 〜 200%）
 
-## 開発
+---
+
+## 開発・ビルド
 
 ### 必要環境
-
 - [Bun](https://bun.sh)
-- Chromium 系最新ブラウザ（Chrome / Edge）
+- [Go](https://go.dev) 1.22+（シングルバイナリ生成用）
 
 ### コマンド
 
 | コマンド | 内容 |
 | --- | --- |
 | `bun install` | 依存関係のインストール |
-| `bun run dev` | 開発サーバ起動 (HMR) |
-| `bun run typecheck` | 型チェック（`tsc --noEmit`） |
-| `bun run build` | 型チェック + 本番ビルド（`www/` へ出力） |
-| `bun run build:exe` | 型チェック + 本番ビルド + Windows exe 化（`DigitShowWebview.exe` 出力） |
-| `bun run build:all` | 全プラットフォーム向け一括クロスビルド（Windows / macOS / Linux 全 7 種類） |
-| `bun run preview` | ビルド結果のローカルブラウザ確認 |
+| `bun run dev` | 開発サーバー起動 (HMR) |
+| `bun run typecheck` | TypeScript 型チェック（`tsc --noEmit`） |
+| `bun run build` | フロントエンド本番ビルド（`www/` 出力） |
+| `bun run build:exe` | フロントエンドビルド ＋ Windows 向け単一 exe 生成（`DigitShowWebview.exe`） |
+| `bun run build:all` | **全 OS / 全アーキテクチャ向け一括クロスビルド**（`dist/` 出力） |
+| `bun run preview` | Web ビルド結果のローカルプレビュー |
 
-> VS Code のタスク:
-> - `Ctrl+Shift+B` → `build`（typecheck + Vite production build）
-> - コマンドパレット → "Tasks: Run Task" → `build exe`（`DigitShowWebview.exe` を生成）
-> - コマンドパレット → "Tasks: Run Task" → `build all platforms`（全 OS/アーキテクチャの実行ファイルを `dist/` に生成）
-> - コマンドパレット → "Tasks: Run Task" → `build www.zip`（`build` 後に `www/` を zip 化）
-> - 同 → `Release`（`build www.zip` と `build all platforms` を一発で実行）
+### VS Code タスク
+- `Ctrl + Shift + B` $\rightarrow$ `build`（型チェック ＋ Web ビルド）
+- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`build all platforms`**（全 7 種類のバイナリを一括生成）
+- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`Release`**（`www.zip` ＋ 全プラットフォームバイナリ生成）
 
-### ビルド成果物
+### ビルド成果物（`build:all` 時の生成ファイル一覧）
+`dist/` 配下に各環境向けの単一バイナリが出力されます：
+- **Windows**: `DigitShowWebview-windows-x64.exe`, `DigitShowWebview-windows-arm64.exe`
+- **macOS**: `DigitShowWebview-darwin-arm64` (Apple Silicon M1〜M4), `DigitShowWebview-darwin-x64` (Intel)
+- **Linux**: `DigitShowWebview-linux-x64`, `DigitShowWebview-linux-arm64` (Raspberry Pi 4/5), `DigitShowWebview-linux-armv7` (Raspberry Pi 32bit)
 
-- `bun run build` を実行すると `www/` に静的ファイル（SPA 本体）が生成されます。
-- `bun run build:exe` を実行すると、静的ファイルを内包した単一実行ファイル `DigitShowWebview.exe`（約 11MB）が生成されます。
-- `bun run build:all` を実行すると、`dist/` 配下に以下の全 7 プラットフォーム向け単一バイナリが一括生成されます：
-  - Windows: `DigitShowWebview-windows-x64.exe`, `DigitShowWebview-windows-arm64.exe`
-  - macOS: `DigitShowWebview-darwin-arm64` (Apple Silicon M1〜M4), `DigitShowWebview-darwin-x64` (Intel)
-  - Linux: `DigitShowWebview-linux-x64`, `DigitShowWebview-linux-arm64` (Raspberry Pi 4/5), `DigitShowWebview-linux-armv7` (Raspberry Pi 32bit)
+---
 
 ## ライセンス
 
