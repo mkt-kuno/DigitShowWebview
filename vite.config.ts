@@ -26,6 +26,11 @@ const DEP_VERSIONS: Record<string, string> = Object.fromEntries(
 
 export default defineConfig(() => ({
   plugins: [react()],
+  resolve: {
+    alias: {
+      buffer: resolve(rootDir, 'src/utils/bufferShim.ts'),
+    },
+  },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(pkg.version),
     'import.meta.env.VITE_DEP_VERSIONS': JSON.stringify(JSON.stringify(DEP_VERSIONS)),
