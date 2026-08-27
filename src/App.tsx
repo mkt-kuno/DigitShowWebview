@@ -189,6 +189,25 @@ export default function App() {
   configRef.current = connection;
   const axes = useChartAxes(axisOptionKeys);
 
+  const selectedPreviewAxes = useMemo(() => {
+    const s = new Set<string>();
+    const all = [
+      axes.chart1X, axes.chart1Y,
+      axes.chart2X, axes.chart2Y,
+      axes.chart3X, axes.chart3Y,
+      axes.chart4X, axes.chart4Y,
+    ];
+    for (const a of all) {
+      if (a) s.add(a);
+    }
+    return s;
+  }, [
+    axes.chart1X, axes.chart1Y,
+    axes.chart2X, axes.chart2Y,
+    axes.chart3X, axes.chart3Y,
+    axes.chart4X, axes.chart4Y,
+  ]);
+
   // PWA update checks were removed alongside the Service Worker.
 
   const handleConnectionSave = useCallback((next: ConnectionConfig) => {
@@ -237,7 +256,15 @@ export default function App() {
           setData(normalizeV2(dataJson));
         }
 
-        const previewUrl = resolveApiUrl(configRef.current, '/v2/preview');
+        // The `time` axis means wall-clock time: ask the backend for its
+        // epoch-second `timestamp` instead of the elapsed-seconds `time`.
+        const previewFields = Array.from(selectedPreviewAxes)
+          .map((k) => (k === 'time' ? 'timestamp' : k))
+          .filter(Boolean)
+          .join('&');
+        const previewUrl = previewFields
+          ? `${resolveApiUrl(configRef.current, '/v2/preview')}?${previewFields}`
+          : resolveApiUrl(configRef.current, '/v2/preview');
         const previewRes = await fetchWithTimeout(previewUrl);
         if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
         const previewJson = await previewRes.json();
@@ -308,7 +335,7 @@ export default function App() {
       if (pollTimer !== null) clearInterval(pollTimer);
       if (recoveryTimer !== null) clearTimeout(recoveryTimer);
     };
-  }, [connection, connected, handleDisconnect]);
+  }, [connection, connected, selectedPreviewAxes, handleDisconnect]);
 
   const handleMenuSelect = useCallback((item: string) => {
     if (item === 'appInfo') setAppInfoOpen(true);
