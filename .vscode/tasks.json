@@ -15,6 +15,24 @@
       }
     },
     {
+      "label": "build exe",
+      "type": "shell",
+      "command": "bun run build:exe",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "build all platforms",
+      "type": "shell",
+      "command": "bun run build:all",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": ["$tsc"]
+    },
+    {
       "label": "build www.zip",
       "dependsOn": "build",
       "dependsOrder": "sequence",
@@ -28,7 +46,7 @@
     {
       "label": "Release",
       "type": "compound",
-      "dependsOn": ["build www.zip"],
+      "dependsOn": ["build www.zip", "build all platforms"],
       "problemMatcher": []
     }
   ]
