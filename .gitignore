@@ -3,7 +3,6 @@ bun.lockb
 package-lock.json
 npm-debug.log*
 www
-www.zip
 dist
 .DS_Store
 

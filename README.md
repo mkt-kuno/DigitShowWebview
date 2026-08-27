@@ -73,8 +73,8 @@ DigitShowModbus のリアルタイム計測値や時系列チャートを手元�
 
 ### VS Code タスク
 - `Ctrl + Shift + B` $\rightarrow$ `build`（型チェック ＋ Web ビルド）
-- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`build all platforms`**（全 7 種類のバイナリを一括生成）
-- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`Release`**（`www.zip` ＋ 全プラットフォームバイナリ生成）
+- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`build exe`**（Windows 向け `DigitShowWebview.exe` を生成）
+- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`Release`**（全 7 プラットフォーム向けバイナリを一括生成）
 
 ### ビルド成果物（`build:all` 時の生成ファイル一覧）
 `dist/` 配下に各環境向けの単一バイナリが出力されます：
