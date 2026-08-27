@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
  * The gesture IS the confirmation — the action fires the moment the knob is
  * released past the commit point, with no dialog behind it. That is deliberate:
  * a dialog someone has learnt to dismiss confirms nothing, and both users of
- * this control (zeroing every output, dropping the serial link) are reached for
+ * this control (zeroing every output, disconnecting) are reached for
  * exactly when the thing needs to happen now.
  */
 

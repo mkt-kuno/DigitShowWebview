@@ -1,12 +1,14 @@
 {
   "name": "digit-show-webview",
-  "version": "5.0.7",
+  "version": "6.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "bunx vite dev",
     "typecheck": "bunx tsc --noEmit",
     "build": "bun run typecheck && bunx vite build",
+    "build:exe": "bun scripts/build-exe.ts",
+    "build:all": "bun scripts/build-all.ts",
     "preview": "bunx vite preview"
   },
   "dependencies": {

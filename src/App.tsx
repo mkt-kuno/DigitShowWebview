@@ -235,9 +235,9 @@ export default function App() {
     }
   }, [connected, handleConnect, handleDisconnect]);
 
-  // Polling + automatic recovery. A failed poll stops the /v1/ + /v1/preview
-  // loop entirely (no more hammering a dead backend) and hands over to a
-  // fixed-interval /v1/health probe. A live health response resumes polling
+  // Polling + automatic recovery. A failed poll stops the /v1/realtime + /v1/preview
+  // loop, shows "Reconnecting…", and starts a 5s
+  // fixed-interval /v1/heartbeat probe. A live heartbeat response resumes polling
   // immediately; HEALTH_RECOVERY_MAX_ATTEMPTS consecutive failures disconnect.
   useEffect(() => {
     if (!connected) return;
@@ -249,7 +249,7 @@ export default function App() {
     const pollOnce = async () => {
       const cycleStart = Date.now();
       try {
-        const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/'));
+        const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/realtime'));
         if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
         const dataJson = await dataRes.json();
         if (!cancelled) {
@@ -296,7 +296,7 @@ export default function App() {
       });
       let healthy = false;
       try {
-        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/health'));
+        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/heartbeat'));
         healthy = res.ok;
       } catch {
         healthy = false;
@@ -310,7 +310,7 @@ export default function App() {
         }
         healthAttempts = 0;
         setHeartbeat({ running: true, info: 'Connected' });
-        // Resume with an immediate poll: health may be fine while /v1/ is not
+        // Resume with an immediate poll: heartbeat may be fine while /v1/realtime is not
         // (server up, Modbus down), and that should re-enter recovery quickly.
         void pollOnce();
         pollTimer = window.setInterval(pollOnce, connection.pollIntervalMs);

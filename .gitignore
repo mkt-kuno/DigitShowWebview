@@ -4,10 +4,13 @@ package-lock.json
 npm-debug.log*
 www
 www.zip
+dist
 .DS_Store
 
 # Bun build scratch files
 *.bun-build
+*.exe
+*.exe~
 
 # Kilo session state
 .kilo/
