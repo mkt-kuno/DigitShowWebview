@@ -1,6 +1,6 @@
 # DigitShowWebview
 
-DigitShow（DigitShowModbus / DigitShowSide）のリアルタイム計測値や時系列チャートを手元の PC で遠隔監視・確認できるクロスプラットフォーム対応の HTTP ビューアです。
+DigitShowModbus のリアルタイム計測値や時系列チャートを手元の PC で遠隔監視・確認できるクロスプラットフォーム対応の HTTP ビューアです。
 
 ---
 
@@ -12,12 +12,12 @@ DigitShow（DigitShowModbus / DigitShowSide）のリアルタイム計測値や�
 +------------------------------------+          +------------------------------------+
 |        試験機 PC (ターゲット)        |          |          監視 PC (ホスト)          |
 |                                    |   HTTP   |                                    |
-|  DigitShowModbus / DigitShowSide   | <──────> |  DigitShowWebview.exe (本アプリ)    |
+|  DigitShowModbus                   | <──────> |  DigitShowWebview.exe (本アプリ)    |
 |  (HTTP API: 192.168.x.x:8080 等)    |  (LAN)   |  (手元の PC でダブルクリック起動)   |
 +------------------------------------+          +------------------------------------+
 ```
 
-- **試験機 PC（ターゲット）**: センサーや Modbus デバイスと接続され、DigitShowModbus / DigitShowSide が動作している計測用 PC。
+- **試験機 PC（ターゲット）**: センサーや Modbus デバイスと接続され、DigitShowModbus が動作している計測用 PC。
 - **監視 PC（ホスト）**: 手元で計測データを確認・監視する作業用 PC。**本アプリ（実行バイナリ）はこちらの監視 PC で起動します。**
   - ※ 以前のように静的ファイルを試験機の `www/` に配置する必要はありません。
 

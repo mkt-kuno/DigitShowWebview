@@ -4,7 +4,7 @@
 
 ## プロジェクト概要
 
-- **React 19 + TypeScript 7 + Vite 8 + Tailwind CSS 4** で構成された DigitShow（DigitShowSide / DigitShowModbus）向け HTTP ポーリングビューア SPA
+- **React 19 + TypeScript 7 + Vite 8 + Tailwind CSS 4** で構成された DigitShow（DigitShowModbus）向け HTTP ポーリングビューア SPA
 - 通信は **HTTP API ポーリング**（バックエンドサーバー `http://<ip>:<port>/v1/` 等を定期取得）
 - AI 16ch（Raw / Physical）/ AO 8ch / Parameter 32ch の値表示および制御（Zero / AO 出力）
 - Plotly.js（`react-plotly.js`）によるリアルタイムチャート表示（X/Y 軸の自由選択、時系列 / パラメトリック曲線）
@@ -67,7 +67,7 @@ public/
 ## アーキテクチャ上の重要点
 
 ### HTTP バックエンド通信
-- バックエンド（DigitShowModbus / DigitShowSide）の REST API を定期的にポーリングします：
+- バックエンド（DigitShowModbus）の REST API を定期的にポーリングします：
   - `GET /v1/realtime`: 全チャンネル（raw, phy, par, out, label）の最新値
   - `GET /v1/preview?param=...`: 直近の時系列プレビューデータ
   - `GET /v1/heartbeat`: 疎通確認・ヘルスチェック
