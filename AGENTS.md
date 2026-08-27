@@ -61,7 +61,7 @@ src/
     ├── interopDefault.ts            # ESM/CJS interop ヘルパー
     └── uiScale.ts                   # UI 拡大率（#root の CSS zoom）管理
 public/
-└── site.svg                         # アプリアイコン
+└── icon.png                         # アプリアイコン（DSMv6）
 ```
 
 ## アーキテクチャ上の重要点
