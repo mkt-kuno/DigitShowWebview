@@ -40,8 +40,7 @@ export default defineConfig(() => ({
   base: '/',
   build: {
     target: 'es2022',
-    // www/ (not the default dist/) so the build output can be dropped next to
-    // DigitShowModbus as a sibling www/ folder.
+    // www/ holds the built SPA assets embedded into the desktop launcher binary.
     outDir: 'www',
     rollupOptions: {
       output: {

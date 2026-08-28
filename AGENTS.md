@@ -5,7 +5,7 @@
 ## プロジェクト概要
 
 - **React 19 + TypeScript 7 + Vite 8 + Tailwind CSS 4** で構成された DigitShow（DigitShowModbus）向け HTTP ポーリングビューア SPA
-- 通信は **HTTP API ポーリング**（バックエンドサーバー `http://<ip>:<port>/v1/` 等を定期取得）
+- 通信は **HTTP API ポーリング**（バックエンドサーバー `http://<ip>:<port>/v2/` 等を定期取得）
 - AI 16ch（Raw / Physical）/ AO 8ch / Parameter 32ch の値表示および制御（Zero / AO 出力）
 - Plotly.js（`react-plotly.js`）によるリアルタイムチャート表示（X/Y 軸の自由選択、時系列 / パラメトリック曲線）
 - Web Serial / WebUSB は使用していません（バックエンドサーバーとの HTTP 通信に一本化）
@@ -68,11 +68,11 @@ public/
 
 ### HTTP バックエンド通信
 - バックエンド（DigitShowModbus）の REST API を定期的にポーリングします：
-  - `GET /v1/realtime`: 全チャンネル（raw, phy, par, out, label）の最新値
-  - `GET /v1/preview?param=...`: 直近の時系列プレビューデータ
-  - `GET /v1/heartbeat`: 疎通確認・ヘルスチェック
-  - `POST /v1/zero`: ゼロ点リセット（Tare）
-  - `POST /v1/out`: AO 出力値設定
+  - `GET /v2` または `/v2/`: サービスディスカバリ（アプリ名、バージョン、利用可能なエンドポイント一覧）
+  - `GET /v2/realtime`: 全チャンネル（raw 16ch, phy 16ch, par 32ch, out 8ch, flag）の最新値
+  - `GET /v2/preview`: 時系列プレビューデータ（クエリ未指定で全チャンネルを一括返却。`?length=...` や特定チャンネル指定も可）
+  - `GET /v2/heartbeat`: 疎通確認・ヘルスチェック（status: "OK", timestamp, version 等）
+  - 旧 `/v1` や未定義パスは `404 Not Found JSON`（`{"error":"Not Found","status":404}`）が返却される
 - **Mixed Content の回避**:
   - 本アプリを HTTPS でホストすると、ローカルネットワーク内の HTTP バックエンド（`http://192.168.x.x:8080` 等）への通信がブラウザの Mixed Content 制約でブロックされます。
   - そのため、本アプリ自体を HTTP（`http://127.0.0.1:...` 等）で配信・起動するか、HTTP デスクトップランチャー経由で利用します。

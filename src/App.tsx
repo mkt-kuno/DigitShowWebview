@@ -32,31 +32,31 @@ const num = (v: unknown): number => {
 };
 
 /**
- * Normalize the /v1/ response into our ApiData shape.
+ * Normalize the /v2/ response into our ApiData shape.
  *
  * The DigitShowModbus backend returns each channel as a { label, value } object:
  *   { raw: { "00": { label: "00:LoadCell(i16)", value: -28.8671875 }, ... }, ... }
  *
  * One `as` cast, one extraction loop per field. No recursive unwrapping.
  */
-function normalizeV1(raw: unknown): ApiData {
+function normalizeV2(raw: unknown): ApiData {
   if (!raw || typeof raw !== 'object') {
     return { raw: {}, phy: {}, par: {}, out: {}, label: {} };
   }
 
   // One cast to the expected backend shape.
   type BackendChannel = { value: number | string | null; label?: string };
-  type BackendV1 = {
+  type BackendV2 = {
     raw?: Record<string, BackendChannel>;
     phy?: Record<string, BackendChannel>;
     par?: Record<string, BackendChannel>;
     out?: Record<string, BackendChannel>;
     label?: Record<string, string>;
   };
-  const v = raw as BackendV1;
+  const v = raw as BackendV2;
 
   // One extractor shared by all four fields.
-  const extract = (map: BackendV1['raw'], round: boolean) => {
+  const extract = (map: BackendV2['raw'], round: boolean) => {
     const values: Record<string, number> = {};
     const labels: Record<string, string> = {};
     if (!map) return { values, labels };
@@ -70,7 +70,7 @@ function normalizeV1(raw: unknown): ApiData {
     return { values, labels };
   };
 
-  // Raw is int16 register value — round to integer. Phy/Par/Out are floats.
+  // Raw is int16 register value in /v2/realtime — round to integer. Phy/Par/Out are floats.
   const rawF = extract(v.raw, true);
   const phyF = extract(v.phy, false);
   const parF = extract(v.par, false);
@@ -99,7 +99,7 @@ function normalizeV1(raw: unknown): ApiData {
 }
 
 /**
- * Normalize the /v1/preview response to { data: Record<string, number[]> }.
+ * Normalize the /v2/preview response to { data: Record<string, number[]> }.
  * Handles:
  *   1. { data: { time: [...], raw_00: [...], ... } }
  *   2. { time: [...], raw_00: [...], ... }               (flat)
@@ -125,14 +125,11 @@ function normalizePreview(raw: unknown): Record<string, (number | null)[]> {
     }
   }
 
-for (const [k, v] of Object.entries(flat)) {
+  for (const [k, v] of Object.entries(flat)) {
     if (Array.isArray(v)) {
-      const isRaw = k.startsWith('raw_');
       result[k] = v.map((n) => {
         const num = typeof n === 'number' ? n : Number(n);
-        if (!Number.isFinite(num)) return null;
-        // Raw is int16 — round to integer; everything else stays float.
-        return isRaw ? Math.round(num) : num;
+        return Number.isFinite(num) ? num : null;
       });
     }
   }
@@ -235,9 +232,9 @@ export default function App() {
     }
   }, [connected, handleConnect, handleDisconnect]);
 
-  // Polling + automatic recovery. A failed poll stops the /v1/realtime + /v1/preview
+  // Polling + automatic recovery. A failed poll stops the /v2/realtime + /v2/preview
   // loop, shows "Reconnecting…", and starts a 5s
-  // fixed-interval /v1/heartbeat probe. A live heartbeat response resumes polling
+  // fixed-interval /v2/heartbeat probe. A live heartbeat response resumes polling
   // immediately; HEALTH_RECOVERY_MAX_ATTEMPTS consecutive failures disconnect.
   useEffect(() => {
     if (!connected) return;
@@ -249,19 +246,22 @@ export default function App() {
     const pollOnce = async () => {
       const cycleStart = Date.now();
       try {
-        const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/realtime'));
-        if (!dataRes.ok) throw new Error(`v1 HTTP ${dataRes.status}`);
+        const dataRes = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v2/realtime'));
+        if (!dataRes.ok) throw new Error(`v2 HTTP ${dataRes.status}`);
         const dataJson = await dataRes.json();
         if (!cancelled) {
-          setData(normalizeV1(dataJson));
+          setData(normalizeV2(dataJson));
         }
 
         // The `time` axis means wall-clock time: ask the backend for its
         // epoch-second `timestamp` instead of the elapsed-seconds `time`.
         const previewFields = Array.from(selectedPreviewAxes)
           .map((k) => (k === 'time' ? 'timestamp' : k))
+          .filter(Boolean)
           .join('&');
-        const previewUrl = `${resolveApiUrl(configRef.current, '/v1/preview')}?${previewFields}`;
+        const previewUrl = previewFields
+          ? `${resolveApiUrl(configRef.current, '/v2/preview')}?${previewFields}`
+          : resolveApiUrl(configRef.current, '/v2/preview');
         const previewRes = await fetchWithTimeout(previewUrl);
         if (!previewRes.ok) throw new Error(`preview HTTP ${previewRes.status}`);
         const previewJson = await previewRes.json();
@@ -296,7 +296,7 @@ export default function App() {
       });
       let healthy = false;
       try {
-        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v1/heartbeat'));
+        const res = await fetchWithTimeout(resolveApiUrl(configRef.current, '/v2/heartbeat'));
         healthy = res.ok;
       } catch {
         healthy = false;
@@ -310,7 +310,7 @@ export default function App() {
         }
         healthAttempts = 0;
         setHeartbeat({ running: true, info: 'Connected' });
-        // Resume with an immediate poll: heartbeat may be fine while /v1/realtime is not
+        // Resume with an immediate poll: heartbeat may be fine while /v2/realtime is not
         // (server up, Modbus down), and that should re-enter recovery quickly.
         void pollOnce();
         pollTimer = window.setInterval(pollOnce, connection.pollIntervalMs);

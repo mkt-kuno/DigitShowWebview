@@ -33,11 +33,11 @@ DigitShowModbus のリアルタイム計測値や時系列チャートを手元�
 1. 右上のメニューアイコン（☰） $\rightarrow$ **Connection Config** を開きます。
 2. **`IP / Hostname`** に **試験機 PC（ターゲット）の IP アドレス**（例: `192.168.1.50` や `157.82.xxx.xxx`）を入力します。
 3. **`Port`** にバックエンドのポート（既定: `8080`）を入力します。
-4. **`Test Connection`** を押して、`/v1/heartbeat` への疎通（OK 200）を確認します。
+4. **`Test Connection`** を押して、`/v2/heartbeat` への疎通（OK 200）を確認します。
    - ※ 設定内容は監視 PC のブラウザ（localStorage）に自動保存されます。
 
 ### 3. 計測データの監視開始
-ヘッダーの **Connect** ボタンを押すと、試験機 PC からの定期ポーリング（`/v1/realtime` および `/v1/preview`）が開始されます。
+ヘッダーの **Connect** ボタンを押すと、試験機 PC からの定期ポーリング（`/v2/realtime` および `/v2/preview`）が開始されます。
 接続中は誤操作防止のため、**Disconnect** がスワイプ操作（ドラッグ確定）になります。
 
 ---
@@ -73,8 +73,8 @@ DigitShowModbus のリアルタイム計測値や時系列チャートを手元�
 
 ### VS Code タスク
 - `Ctrl + Shift + B` $\rightarrow$ `build`（型チェック ＋ Web ビルド）
-- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`build all platforms`**（全 7 種類のバイナリを一括生成）
-- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`Release`**（`www.zip` ＋ 全プラットフォームバイナリ生成）
+- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`build exe`**（Windows 向け `DigitShowWebview.exe` を生成）
+- コマンドパレット $\rightarrow$ **Tasks: Run Task** $\rightarrow$ **`Release`**（全 7 プラットフォーム向けバイナリを一括生成）
 
 ### ビルド成果物（`build:all` 時の生成ファイル一覧）
 `dist/` 配下に各環境向けの単一バイナリが出力されます：

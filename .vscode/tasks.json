@@ -33,21 +33,13 @@
       "problemMatcher": ["$tsc"]
     },
     {
-      "label": "build www.zip",
-      "dependsOn": "build",
-      "dependsOrder": "sequence",
+      "label": "Release",
       "type": "shell",
-      "command": "powershell -NoProfile -Command \"Compress-Archive -Path 'www/*' -DestinationPath 'www.zip' -Force\"",
+      "command": "bun run build:all",
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
-    },
-    {
-      "label": "Release",
-      "type": "compound",
-      "dependsOn": ["build www.zip", "build all platforms"],
-      "problemMatcher": []
+      "problemMatcher": ["$tsc"]
     }
   ]
 }
